@@ -115,7 +115,7 @@ export class ConversationalAssistant extends ILLMProvider {
   /**
    * Synthesizes grounded answers following the Runtime RAG System Prompt.
    */
-  async synthesizeEvidence({ query, evidence = [], userProfile = {} }) {
+  async synthesizeEvidence({ query, evidence = [], userProfile = {}, chatHistory = [], sourceOrigin = 'internal_index' }) {
     // 1. Prompt Injection Defense (Never obey commands embedded in queries or evidence)
     const injection = detectPromptInjection(query);
     if (injection.detected) {
@@ -149,7 +149,7 @@ export class ConversationalAssistant extends ILLMProvider {
 
     // 4. Multi-Mode Synthesis: Local Expert Synthesizer ($0 zero-cost default)
     if (this.providerMode === 'local' || (!this.geminiApiKey && this.providerMode === 'gemini')) {
-      return this._localSynthesize(query, evidence, userProfile);
+      return this._localSynthesize(query, evidence, userProfile, chatHistory, sourceOrigin);
     }
 
     // 5. Cloud Gemini Free Tier (when API key is provided)
@@ -158,47 +158,118 @@ export class ConversationalAssistant extends ILLMProvider {
         return await this._geminiSynthesize(query, evidence, userProfile);
       } catch (err) {
         console.warn(`[LLM] Gemini API error, using local synthesizer fallback: ${err.message}`);
-        return this._localSynthesize(query, evidence, userProfile);
+        return this._localSynthesize(query, evidence, userProfile, chatHistory, sourceOrigin);
       }
     }
 
-    return this._localSynthesize(query, evidence, userProfile);
+    return this._localSynthesize(query, evidence, userProfile, chatHistory, sourceOrigin);
   }
 
   /**
-   * Deterministic local synthesis implementing the complete prompt guidelines.
+   * Interactive local synthesis implementing the complete prompt guidelines:
+   * - Interacts with the user based on their specific situation and technical background
+   * - Gives in-depth, accessible conceptual explanations
+   * - Delivers verified resources from internal index or live web search
+   * - Concludes with a concrete immediate action and engaging follow-up question.
    */
-  _localSynthesize(query, evidence, userProfile) {
+  _localSynthesize(query, evidence, userProfile = {}, chatHistory = [], sourceOrigin = 'internal_index') {
     const citations = buildCitations(evidence);
-    const topItem = evidence[0];
+    const topItem = evidence[0] || {};
+    const queryLower = query.toLowerCase();
 
-    let body = `Based on verified evidence from **${topItem.provider?.name || 'Authoritative Security Authorities'}**:\n\n`;
+    // Intent detection
+    const isGreeting = /^(hi|hello|hey|good\s*(morning|evening|afternoon)|greetings|howdy)\b/i.test(query.trim());
+    const isCareerTransition = /(career|transition|pivot|become|switch|start|helpdesk|developer|sysadmin|student|job|roadmap|pathway)/i.test(queryLower);
+    const isConceptQuestion = /(what is|explain|how does|why does|difference between|overview|define|concept|tell me about)/i.test(queryLower);
+    const isLabQuestion = /(lab|practice|hands-on|exercise|wargame|tutorial|where can i practice)/i.test(queryLower);
+    const isToolQuestion = /(tool|software|wireshark|nmap|ghidra|burp|metasploit|snort|zeek|download)/i.test(queryLower);
 
-    body += `### Concept Overview\n${topItem.contentSummary || topItem.title}\n\n`;
+    let body = '';
 
-    if (topItem.conceptsCovered && topItem.conceptsCovered.length > 0) {
-      body += `**Key Principles & Covered Concepts:**\n`;
-      for (const concept of topItem.conceptsCovered.slice(0, 5)) {
-        body += `- **${concept}**: Foundational topic within ${topItem.taxonomy?.domainId || 'cybersecurity'}.\n`;
+    // 1. Personalized Conversational Opening
+    if (isGreeting) {
+      body += `Hello! I am your dedicated **Cybersecurity Learning & Career Assistant**.\n\n`;
+      body += `I'm here to interact with you, understand your background and goals, and provide tailored explanations alongside the best 100% verified, legal, and free educational resources available.\n\n`;
+    } else if (isCareerTransition) {
+      const bg = userProfile.technicalBackground || (queryLower.includes('developer') ? 'software_dev' : queryLower.includes('helpdesk') ? 'it_support' : 'learner');
+      if (bg === 'software_dev') {
+        body += `Transitioning from software development into cybersecurity is one of the highest-leverage paths in the industry! Your experience with software architecture, codebases, and APIs gives you a direct bridge into **Application Security (AppSec)**, **DevSecOps**, and **Cloud Infrastructure Security**.\n\n`;
+      } else if (bg === 'it_support') {
+        body += `Coming from an IT support, helpdesk, or sysadmin role provides the ideal foundation for **SOC Analyst (Tier 1)** and **Blue Teaming**. You already understand operating system logs, user permissions, networking, and triage troubleshooting—which are the core skills used daily in a Security Operations Center.\n\n`;
+      } else if (bg === 'non_tech') {
+        body += `Welcome to cybersecurity! Starting with zero technical background is completely fine. The key is taking it step by step: mastering core computer networking and Linux terminal fundamentals first before diving into complex vulnerabilities.\n\n`;
+      } else {
+        body += `Planning a cybersecurity pathway tailored to your experience is the best way to make steady progress without feeling overwhelmed.\n\n`;
       }
-      body += `\n`;
-    }
-
-    body += `### Guidance for Learners\n`;
-    body += `This topic is classified at the **${topItem.difficultyLevel || 'beginner'}** level. `;
-    if (topItem.prerequisites && topItem.prerequisites.length > 0) {
-      body += `Recommended prerequisites to review first: *${topItem.prerequisites.join(', ')}*.\n\n`;
+    } else if (isConceptQuestion) {
+      body += `Let's break down this concept clearly so you understand how it functions both in theory and in real-world defensive operations:\n\n`;
+    } else if (isLabQuestion || isToolQuestion) {
+      body += `Hands-on repetition in legal, sandboxed environments is the fastest way to build real security competence. Here is the operational guidance and verified practice material:\n\n`;
     } else {
-      body += `You can begin studying this directly without extensive prior security background.\n\n`;
+      body += `Here is a clear, grounded breakdown based on verified security authorities:\n\n`;
     }
 
-    body += `> **Practical Note:** Cybersecurity proficiency builds through continuous hands-on repetition. Timeframes vary depending on your prior experience; we do not guarantee employment, certifications, or exact completion timelines.\n\n`;
+    // 2. Substantive Concept Explanation
+    if (topItem && topItem.title) {
+      body += `### Concept Breakdown & Core Mechanics\n`;
+      body += `${topItem.contentSummary || topItem.title}\n\n`;
 
-    // Concrete next action the learner can begin immediately
-    const immediateAction = `### Concrete Next Action\nOpen **[${topItem.title}](${topItem.canonicalUrl})** now, spend 15 minutes reviewing the introductory section, and take structured notes on the key definitions.`;
+      if (topItem.conceptsCovered && topItem.conceptsCovered.length > 0) {
+        body += `**Key Principles to Focus On:**\n`;
+        for (const concept of topItem.conceptsCovered.slice(0, 4)) {
+          body += `- **${concept}**: Fundamental topic for building practical competence.\n`;
+        }
+        body += `\n`;
+      }
+    }
 
-    const textWithNextAction = `${body}\n${immediateAction}`;
-    const finalText = appendMarkdownCitations(textWithNextAction, citations);
+    // 3. Resource Recommendations Tailored to Requirement
+    const isLiveSearch = sourceOrigin === 'live_search' || topItem.provenance?.origin === 'live_search';
+    
+    if (isLiveSearch) {
+      body += `### 🌐 Discovered via Live Internet Search\n`;
+      body += `Our internal catalog did not have an exact pre-indexed resource for this specific query, so we **searched verified internet authorities** to find current, authoritative materials for you:\n\n`;
+    } else {
+      body += `### 📚 Best Verified Resources (From Internal Knowledge Base)\n`;
+      body += `Here are the top-matched free, legal learning resources calibrated for your requirement:\n\n`;
+    }
+
+    const displayResources = evidence.slice(0, 3);
+    for (const res of displayResources) {
+      const provTag = res.provenance?.origin === 'live_search' ? '`[Live search]`' : '`[Indexed]`';
+      const provider = res.provider?.name || 'Verified Authority';
+      const diff = res.difficultyLevel ? `Level: ${res.difficultyLevel}` : 'Beginner friendly';
+      const format = res.resourceType ? `Format: ${res.resourceType}` : 'Official Documentation';
+      const why = res.whyRecommended || res.contentSummary || 'Directly relevant authoritative material.';
+
+      body += `1. **[${res.title}](${res.canonicalUrl})** ${provTag}\n`;
+      body += `   - **Provider / Format:** ${provider} • ${format} • ${diff}\n`;
+      body += `   - **Why it is recommended:** ${why}\n\n`;
+    }
+
+    // 4. Honest Guidance Disclaimer
+    body += `> **Practical Learning Note:** Cybersecurity mastery requires hands-on experimentation. Learning pace varies by individual; we provide structured guidance rather than false guarantees of employment or instant certification.\n\n`;
+
+    // 5. Concrete Immediate Next Action
+    const primaryRes = displayResources[0] || topItem;
+    body += `### ⚡ Concrete Next Action You Can Begin Right Now\n`;
+    if (primaryRes && primaryRes.canonicalUrl) {
+      body += `Open **[${primaryRes.title}](${primaryRes.canonicalUrl})** right now, spend 15–20 minutes reading the introductory section, and write down 3 key concepts in your personal study notes.\n\n`;
+    } else {
+      body += `Dedicate 15 minutes to documenting your current technical strengths and choosing between defensive (Blue Team) or offensive (Red Team) focus.\n\n`;
+    }
+
+    // 6. Interactive Follow-up Question
+    body += `### 💬 To Guide Our Next Step:\n`;
+    if (isCareerTransition) {
+      body += `How many hours per week can you realistically dedicate to studying, and do you prefer **offensive security (ethical hacking)** or **defensive operations (SOC/incident response)**?`;
+    } else if (isLabQuestion || isToolQuestion) {
+      body += `Are you comfortable with the Linux terminal (SSH, file navigation), or would you prefer a zero-setup browser lab to start?`;
+    } else {
+      body += `Would you like me to map this into a structured 5-stage roadmap, or recommend hands-on labs where you can practice this interactively?`;
+    }
+
+    const finalText = appendMarkdownCitations(body, citations);
 
     return {
       text: finalText,

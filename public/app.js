@@ -11,6 +11,7 @@ const state = {
   resources: [],
   userProfile: JSON.parse(localStorage.getItem('cyber_user_profile') || '{}'),
   studyProgress: JSON.parse(localStorage.getItem('cyber_study_progress') || '{}'),
+  chatHistory: [],
   catalogFilters: {
     search: '',
     domain: '',
@@ -184,6 +185,7 @@ function setupEventListeners() {
 
   elements.btnClearChat?.addEventListener('click', () => {
     if (confirm('Clear conversation history?')) {
+      state.chatHistory = [];
       elements.chatMessages.innerHTML = `
         <div class="message message-assistant">
           <div class="msg-avatar">🛡️</div>
@@ -704,23 +706,35 @@ function appendAssistantLoading() {
 }
 
 async function sendChatQuery(query) {
+  state.chatHistory.push({ role: 'user', text: query });
   appendAssistantLoading();
 
   try {
     const res = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, userProfile: state.userProfile })
+      body: JSON.stringify({
+        query,
+        userProfile: state.userProfile,
+        chatHistory: state.chatHistory.slice(-8)
+      })
     });
     const data = await res.json();
 
     document.getElementById('loading-bubble')?.remove();
 
+    if (data.answer) {
+      state.chatHistory.push({ role: 'assistant', text: data.answer });
+    }
+
     if (data.sourceOrigin === 'live_search') {
-      elements.sufficiencyBadge.textContent = '🌐 Live Search Fallback';
+      elements.sufficiencyBadge.textContent = '🌐 Live Web Search';
       elements.sufficiencyBadge.style.color = 'var(--accent-amber)';
+    } else if (data.sourceOrigin === 'hybrid') {
+      elements.sufficiencyBadge.textContent = '⚡ Hybrid (Index + Web)';
+      elements.sufficiencyBadge.style.color = 'var(--accent-cyan)';
     } else {
-      elements.sufficiencyBadge.textContent = '📚 Internal Index';
+      elements.sufficiencyBadge.textContent = '📚 Internal Knowledge Base';
       elements.sufficiencyBadge.style.color = 'var(--accent-emerald)';
     }
 
