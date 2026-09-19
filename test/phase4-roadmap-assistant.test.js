@@ -178,4 +178,63 @@ test('Conversational Assistant Synthesis & Safety', async (t) => {
     assert.ok(response.text.includes('https://www.professormesser.com/network-plus/n10-008/n10-008-training-course/'));
     assert.ok(response.text.includes('Concrete Next Action'));
   });
+
+  await t.test('explains Microsoft Defender with EDR, NGAV, ASR, and operational triage', async () => {
+    const evidence = [
+      {
+        id: 'seed-endpoint-defender',
+        title: 'Microsoft Learn: Microsoft Defender for Endpoint Architecture & Lab',
+        canonicalUrl: 'https://learn.microsoft.com/en-us/defender-endpoint/microsoft-defender-endpoint',
+        contentSummary: 'Official architectural documentation detailing Microsoft Defender for Endpoint.',
+        conceptsCovered: ['Endpoint Detection & Response (EDR)', 'Next-Gen Antivirus (NGAV)', 'Attack Surface Reduction (ASR)'],
+        difficultyLevel: 'beginner',
+        provider: { name: 'Microsoft' },
+        provenance: { origin: 'internal_index' }
+      }
+    ];
+
+    const response = await assistant.synthesizeEvidence({
+      query: 'what is microsoft defender, and how can we use it in cybersecurity?',
+      evidence
+    });
+
+    assert.equal(response.blocked, false);
+    assert.ok(response.text.includes('Microsoft Defender'));
+    assert.ok(response.text.includes('Endpoint Detection & Response (EDR)'));
+    assert.ok(response.text.includes('Next-Generation Antivirus (NGAV)'));
+    assert.ok(response.text.includes('Attack Surface Reduction (ASR)'));
+    assert.ok(response.text.includes('https://learn.microsoft.com/en-us/defender-endpoint/microsoft-defender-endpoint'));
+    // Ensure no cross-domain car hacking leaks
+    assert.ok(!response.text.toLowerCase().includes('can bus'));
+    assert.ok(!response.text.toLowerCase().includes('opengarages'));
+  });
+
+  await t.test('explains Microsoft Sentinel with SIEM, SOAR, KQL, and data connectors', async () => {
+    const evidence = [
+      {
+        id: 'seed-soc-sentinel',
+        title: 'Microsoft Learn: Microsoft Sentinel Cloud SIEM & SOAR Architecture',
+        canonicalUrl: 'https://learn.microsoft.com/en-us/azure/sentinel/overview',
+        contentSummary: 'Comprehensive official guide to Microsoft Sentinel cloud SIEM and SOAR.',
+        conceptsCovered: ['Cloud SIEM Analytics', 'Kusto Query Language (KQL)', 'SOAR Playbooks & Automation'],
+        difficultyLevel: 'beginner',
+        provider: { name: 'Microsoft' },
+        provenance: { origin: 'internal_index' }
+      }
+    ];
+
+    const response = await assistant.synthesizeEvidence({
+      query: 'what is ms sentinel?',
+      evidence
+    });
+
+    assert.equal(response.blocked, false);
+    assert.ok(response.text.includes('Microsoft Sentinel'));
+    assert.ok(response.text.includes('SIEM'));
+    assert.ok(response.text.includes('SOAR'));
+    assert.ok(response.text.includes('Kusto Query Language (KQL)'));
+    assert.ok(response.text.includes('https://learn.microsoft.com/en-us/azure/sentinel/overview'));
+    // Ensure no Med. Sentinel medical journal leak
+    assert.ok(!response.text.toLowerCase().includes('med. sentinel'));
+  });
 });

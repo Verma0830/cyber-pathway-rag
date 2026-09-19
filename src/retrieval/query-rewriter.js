@@ -22,7 +22,7 @@ const ACRONYM_EXPANSIONS = {
   'ad': 'active directory kerberos windows domain',
   'scada': 'industrial control systems ics modbus purdue',
   'iot': 'internet of things firmware embedded',
-  'can': 'controller area network automotive car bus',
+  'canbus': 'controller area network automotive car bus',
   'llm': 'large language model prompt injection ai security',
   'grc': 'governance risk compliance nist csf iso 27001',
   'osi': 'osi model 7 layers open systems interconnection networking',
@@ -34,7 +34,13 @@ const ACRONYM_EXPANSIONS = {
   'vpn': 'virtual private network ipsec wireguard',
   'ids': 'intrusion detection system snort suricata zeek',
   'ips': 'intrusion prevention system snort suricata',
-  'waf': 'web application firewall modsecurity'
+  'waf': 'web application firewall modsecurity',
+  'ms': 'microsoft',
+  'mde': 'microsoft defender for endpoint edr',
+  'xdr': 'extended detection response telemetry',
+  'kql': 'kusto query language sentinel logs',
+  'defender': 'microsoft defender for endpoint antivirus',
+  'sentinel': 'microsoft sentinel cloud siem soar'
 };
 
 const RECENCY_KEYWORDS = [
@@ -104,9 +110,12 @@ export function rewriteQuery(rawQuery) {
  */
 export function extractCoreKeywords(query) {
   if (!query || typeof query !== 'string') return '';
-  const cleaned = query
-    .replace(/^(i\s+(want|need|would\s+like)\s+to\s+(learn|know|understand|read|study)(\s+more)?\s+(about)?|can\s+you\s+(please\s+)?(explain|tell\s+me\s+about|teach\s+me|help\s+me\s+with)|what\s+is(\s+the)?|how\s+does(\s+the)?|how\s+do\s+i|where\s+can\s+i\s+(find|learn|practice)|tell\s+me\s+about|give\s+me\s+an\s+overview\s+of|explain)\s+/i, '')
+  let cleaned = query.trim();
+  cleaned = cleaned
+    .replace(/^(can\s+you\s+(please\s+)?(explain|tell\s+me\s+about|teach\s+me|help\s+me\s+with)\s+)?(what\s+is(\s+the)?|how\s+does(\s+the)?|how\s+do\s+i|where\s+can\s+i\s+(find|learn|practice)|tell\s+me\s+about|give\s+me\s+an\s+overview\s+of|explain|i\s+(want|need|would\s+like)\s+to\s+(learn|know|understand|read|study)(\s+more)?\s+(about)?)\s+/i, '')
+    .replace(/(,\s*)?(\s+and\s+how\s+(can|do)\s+(we|i|security\s+teams)\s+use\s+(it|this)(\s+in\s+cybersecurity)?|\s+and\s+how\s+does\s+it\s+work|\s+and\s+how\s+to\s+use\s+it|\s+in\s+cybersecurity)+/i, '')
     .replace(/(\s+(please|help|thanks|thank\s+you|for\s+beginners|in\s+detail|step\s+by\s+step))+$/i, '')
+    .replace(/[?,.!]+$/, '')
     .trim();
 
   return cleaned.length > 0 ? cleaned : query.trim();

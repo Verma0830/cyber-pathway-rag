@@ -193,7 +193,9 @@ export class ConversationalAssistant extends ILLMProvider {
     // Deep topic matchers
     const isOsi = /\b(osi|osi model|7 layers|open systems interconnection)\b/i.test(queryLower) || /\b(osi|osi model)\b/i.test(coreLower);
     const isTcp = /\b(tcp|tcp\/ip|handshake|3-way handshake|syn ack)\b/i.test(queryLower) && !isOsi;
-    const isConcept = isOsi || isTcp || /(what is|explain|how does|why does|difference between|overview|define|concept|tell me about|understand|meaning|learn|study|teach me|breakdown|guide to)/i.test(queryLower);
+    const isDefender = /\b(defender|mde|microsoft defender|windows defender)\b/i.test(queryLower) || /\b(defender|mde|microsoft defender)\b/i.test(coreLower);
+    const isSentinel = /\b(sentinel|microsoft sentinel|azure sentinel|ms sentinel)\b/i.test(queryLower) || /\b(sentinel|microsoft sentinel|ms sentinel)\b/i.test(coreLower);
+    const isConcept = isOsi || isTcp || isDefender || isSentinel || /(what is|explain|how does|why does|difference between|overview|define|concept|tell me about|understand|meaning|learn|study|teach me|breakdown|guide to)/i.test(queryLower);
 
     // Multi-turn context check: see what the previous assistant turn asked
     const lastAssistantMsg = (chatHistory || [])
@@ -228,6 +230,39 @@ The secret is pacing yourself: focus first on mastering core computer networking
       } else {
         parts.push(`Planning a direction in cybersecurity is all about aligning what excites you with a structured, step-by-step roadmap. Let's look at your goals and find the right route.`);
       }
+    } else if (isDefender) {
+      parts.push(`### Microsoft Defender in Cybersecurity: Architecture & Operational Use
+
+**Microsoft Defender for Endpoint (MDE)** is an enterprise-grade endpoint security and Extended Detection and Response (**EDR / XDR**) platform. In enterprise cybersecurity, endpoints (laptops, servers, workstations) are the primary entry point for cyber attacks via phishing, weaponized attachments, credential harvesting, and drive-by downloads.
+
+Here is how Microsoft Defender works and how security practitioners use it daily:
+
+#### 1. Core Architectural Pillars
+• **Endpoint Detection & Response (EDR):** The Defender sensor runs directly inside the Windows, Linux, and macOS OS kernels. It continuously monitors and records process creation trees, network sockets, file modifications, and registry changes, streaming telemetry to the cloud for real-time behavioral correlation.
+• **Next-Generation Antivirus (NGAV):** Cloud-delivered, machine learning-driven protection that detects and quarantines malicious binaries, polymorphic malware, and fileless in-memory attacks before they execute.
+• **Attack Surface Reduction (ASR) Rules:** Hardening controls that stop attacks at the earliest phase—such as blocking Office applications from spawning PowerShell/CMD child processes, blocking credential theft from the Windows Local Security Authority Subsystem Service (\`lsass.exe\`), and preventing untrusted executable files from running off USB drives.
+• **Automated Investigation & Remediation (AIR):** AI-driven playbooks that automatically analyze triggered alerts, inspect affected machines, identify the root cause artifact, terminate running malicious processes, and quarantine files across the fleet.
+
+#### 2. How Security Teams Use It in Cybersecurity
+• **SOC Analysts (Incident Triage):** When an alert triggers, analysts inspect the visual **Execution Tree (Process Timeline)** showing which parent process spawned the command, what network IP the host contacted, and what files were touched.
+• **Incident Responders:** Analysts can **Isolate the Device** from the enterprise network with one click (severing all lateral movement pathways while maintaining a cloud management tunnel), or launch **Live Response** to drop into a remote forensic command line on the host to dump memory, collect triage artifacts, or inspect persistence.
+• **Threat Hunters (Advanced Hunting):** Analysts author **Kusto Query Language (KQL)** queries against months of raw endpoint telemetry across tens of thousands of endpoints to proactively hunt for stealthy Living-off-the-Land Binaries (LOLBins) and advanced adversary persistence.`);
+    } else if (isSentinel) {
+      parts.push(`### Microsoft Sentinel in Cybersecurity: Cloud SIEM & SOAR Architecture
+
+**Microsoft Sentinel** (formerly Azure Sentinel) is a scalable, cloud-native **SIEM** (Security Information and Event Management) and **SOAR** (Security Orchestration, Automation, and Response) solution. 
+
+While tools like Microsoft Defender focus on monitoring individual endpoints, Sentinel acts as the **central nervous system of the Security Operations Center (SOC)**, aggregating, correlating, and alerting across the entire enterprise infrastructure.
+
+#### 1. The 4 Operational Pillars of Sentinel
+• **1. Collect (Data Connectors):** Ingests security logs at cloud scale from every corner of your environment—including Microsoft Defender, Microsoft 365, AWS CloudTrail, Google Cloud Platform, Okta, perimeter firewalls (Palo Alto, Fortinet, Cisco), and on-premises Windows domain controllers.
+• **2. Detect (Analytics Rules & KQL):** Uses **Kusto Query Language (KQL)** and behavioral machine learning to evaluate billions of incoming log events every hour, alerting when behavior matches known adversary tactics mapped to the **MITRE ATT&CK** matrix.
+• **3. Investigate (Incident Workbenches & Graph):** Groups related alerts into unified **Incidents** to eliminate alert fatigue. The visual **Investigation Graph** maps the relationships between compromised user accounts, attacker IP addresses, targeted hosts, and suspicious file hashes.
+• **4. Respond (Automated SOAR Playbooks):** Powered by Azure Logic Apps, Sentinel executes automated playbooks within seconds—such as automatically blocking an attacker's IP on perimeter firewalls, disabling a compromised Active Directory account, or paging the on-call incident response team in Slack/Teams.
+
+#### 2. How Security Professionals Use It
+• **SOC Analysts:** Triage high-priority enterprise incidents, trace lateral movement across hybrid cloud networks, and document incident response timelines.
+• **Detection Engineers:** Author custom detection analytics rules in KQL to hunt for zero-day exploitation patterns and configure automated remediation playbooks.`);
     } else if (isOsi) {
       parts.push(`The **OSI (Open Systems Interconnection) Model** is the essential 7-layer architectural framework created by the ISO to standardize how computer systems communicate across a network.
 
@@ -284,11 +319,23 @@ At the Transport layer, TCP guarantees reliable, ordered packet delivery through
 • **Stealth Port Scans (Nmap \`-sS\`):** The scanner sends SYN; if it gets SYN-ACK, it knows the port is open and immediately sends RST (Reset) instead of ACK to avoid establishing a full connection logged by applications.`);
     } else if (isConcept) {
       const topicTitle = coreTopic ? coreTopic : (topItem.title || 'this security topic');
-      parts.push(`Let's unpack **${topicTitle}**! Understanding this is essential for building practical cybersecurity skills.
+      const topItemText = `${topItem.title || ''} ${topItem.contentSummary || ''} ${(topItem.conceptsCovered || []).join(' ')}`.toLowerCase();
+      const coreTokens = coreLower.split(/\s+/).filter(t => t.length > 2);
+      const isTopItemRelevant = coreTokens.length > 0 && coreTokens.some(t => new RegExp('(^|[^a-z0-9])' + t + '([^a-z0-9]|$)', 'i').test(topItemText));
 
-${topItem.contentSummary || 'This is a foundational concept used across defensive operations, threat analysis, and secure engineering.'}`);
-      if (topItem.conceptsCovered && topItem.conceptsCovered.length > 0) {
-        parts.push(`In production environments, security teams pay particular attention to: **${topItem.conceptsCovered.slice(0, 4).join('**, **')}**.`);
+      if (isTopItemRelevant && topItem.contentSummary) {
+        parts.push(`Let's unpack **${topicTitle}**! Understanding this is essential for building practical cybersecurity skills.
+
+${topItem.contentSummary}`);
+        if (topItem.conceptsCovered && topItem.conceptsCovered.length > 0) {
+          parts.push(`In production environments, security teams pay particular attention to: **${topItem.conceptsCovered.slice(0, 4).join('**, **')}**.`);
+        }
+      } else {
+        parts.push(`### Understanding **${topicTitle}** in Cybersecurity
+
+In cybersecurity practice, **${topicTitle}** is an important area of defensive architecture, threat detection, and risk management.
+
+Security professionals analyze and implement this technology to reduce attack surfaces, detect unauthorized activity, and strengthen overall organizational resilience.`);
       }
     } else if (isLab || isTool) {
       parts.push(`You're asking the right question! In cybersecurity, reading theory only gets you so far; real confidence comes from getting hands-on at the command line in safe, isolated labs.
@@ -304,44 +351,55 @@ ${topItem.contentSummary || 'This is an authoritative area of security practice 
     }
 
     // 2. Seamless Verified Resource Recommendations
-    const isLive = sourceOrigin === 'live_search' || topItem.provenance?.origin === 'live_search';
-    if (isLive) {
-      parts.push(`Because this touches on a specific or current topic outside our core pre-indexed catalog, I ran a **live internet search** across verified security authorities for you. Here are the best free resources I found:`);
-    } else {
-      parts.push(`To help you take action right away, here are the best verified, 100% free learning resources from our database:`);
-    }
-
-    // Filter out low-relevance background items if high-relevance matches exist
+    // Strictly filter out low-relevance background items to avoid showing unrelated resources
     const relevantEvidence = evidence.filter(r => {
       if (!coreLower || coreLower.length < 3) return true;
       const text = `${r.title} ${r.contentSummary || ''} ${(r.conceptsCovered || []).join(' ')} ${(r.taxonomy?.topics || []).join(' ')}`.toLowerCase();
       if (coreLower.includes(' ') && text.includes(coreLower)) return true;
       const coreTokens = coreLower.split(/\s+/).filter(t => t.length > 2);
-      return coreTokens.length > 0 && coreTokens.every(t => new RegExp('(^|[^a-z0-9])' + t + '([^a-z0-9]|$)', 'i').test(text));
+      return coreTokens.length > 0 && coreTokens.some(t => new RegExp('(^|[^a-z0-9])' + t + '([^a-z0-9]|$)', 'i').test(text));
     });
-    const displayResources = (relevantEvidence.length > 0 ? relevantEvidence : evidence).slice(0, 3);
-    for (const res of displayResources) {
-      const provTag = res.provenance?.origin === 'live_search' ? '`[Live search]`' : '`[Indexed]`';
-      const provider = res.provider?.name || 'Verified Authority';
-      const diff = res.difficultyLevel ? `Level: ${res.difficultyLevel}` : 'All levels';
-      const format = res.resourceType ? `Format: ${res.resourceType}` : 'Official Documentation';
-      const why = res.whyRecommended || res.contentSummary || 'Authoritative educational material directly addressing this topic.';
+    const displayResources = (relevantEvidence.length > 0 ? relevantEvidence : (topItem.score > 0.45 ? evidence.slice(0, 2) : [])).slice(0, 3);
 
-      parts.push(`• **[${res.title}](${res.canonicalUrl})** ${provTag}\n  *(${provider} • ${format} • ${diff})*\n  👉 **Why this is valuable:** ${why}`);
+    if (displayResources.length > 0) {
+      const isLive = sourceOrigin === 'live_search' || displayResources[0].provenance?.origin === 'live_search';
+      if (isLive) {
+        parts.push(`Because this touches on a specific or current topic outside our core pre-indexed catalog, I ran a **live internet search** across verified security authorities for you. Here are the best free resources I found:`);
+      } else {
+        parts.push(`To help you take action right away, here are the best verified, 100% free learning resources from our database:`);
+      }
+
+      for (const res of displayResources) {
+        const provTag = res.provenance?.origin === 'live_search' ? '`[Live search]`' : '`[Indexed]`';
+        const provider = res.provider?.name || 'Verified Authority';
+        const diff = res.difficultyLevel ? `Level: ${res.difficultyLevel}` : 'All levels';
+        const format = res.resourceType ? `Format: ${res.resourceType}` : 'Official Documentation';
+        const why = res.whyRecommended || res.contentSummary || 'Authoritative educational material directly addressing this topic.';
+
+        parts.push(`• **[${res.title}](${res.canonicalUrl})** ${provTag}\n  *(${provider} • ${format} • ${diff})*\n  👉 **Why this is valuable:** ${why}`);
+      }
     }
 
     // 3. Honest Guidance Note
     parts.push(`> **Mentor Note:** Learning cybersecurity is an endurance sport, not an overnight sprint. Focus on truly understanding the underlying mechanics rather than trying to memorize everything at once. Real skill is built through hands-on repetition.`);
 
     // 4. Concrete Immediate Next Action
-    const primary = displayResources[0] || topItem;
-    parts.push(`### Concrete Next Action\nOpen **[${primary.title}](${primary.canonicalUrl})** right now, spend 15–20 minutes reviewing the core material, and jot down 3 key takeaways in your personal study notes. Taking that immediate 15-minute action turns curiosity into real competence!`);
+    const primary = displayResources[0] || (topItem.score > 0.45 ? topItem : null);
+    if (primary) {
+      parts.push(`### Concrete Next Action\nOpen **[${primary.title}](${primary.canonicalUrl})** right now, spend 15–20 minutes reviewing the core material, and jot down 3 key takeaways in your personal study notes. Taking that immediate 15-minute action turns curiosity into real competence!`);
+    } else {
+      parts.push(`### Concrete Next Action\nSpend 15–20 minutes reviewing the official technical documentation for **${coreTopic || query}**, and jot down 3 key architectural takeaways in your personal study notes.`);
+    }
 
     // 5. Interactive Follow-up Question
     if (isGreeting) {
       parts.push(`💬 **Tell me:** What's your current technical background, and what area of security interests you most?`);
     } else if (isCareer) {
       parts.push(`💬 **Quick question for you:** How many hours per week do you realistically have available to study, and are you leaning more toward **breaking systems (Offensive / Red Team)** or **defending networks (SOC / Blue Team)**?`);
+    } else if (isDefender) {
+      parts.push(`💬 **Next step:** Would you like to see an example of a KQL threat hunting query used in Defender, or learn how to test Attack Surface Reduction (ASR) rules in a safe lab?`);
+    } else if (isSentinel) {
+      parts.push(`💬 **Next step:** Would you like to explore how KQL queries work in Sentinel to detect suspicious logins, or see how automated SOAR playbooks respond to incidents?`);
     } else if (isOsi) {
       parts.push(`💬 **Quick question:** Would you like to see how packet analysis tools like Wireshark inspect these layers, or explore how specific attacks (like ARP spoofing at Layer 2 vs SQL injection at Layer 7) work in practice?`);
     } else if (isTcp) {

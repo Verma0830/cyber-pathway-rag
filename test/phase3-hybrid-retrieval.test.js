@@ -133,8 +133,8 @@ test('Hybrid Retriever Integration', async () => {
   await store.initialize();
 
   const pipeline = new IngestionPipeline({ db: store });
-  // Seed first 20 items
-  await pipeline.ingestBatch(SEED_RESOURCES.slice(0, 20));
+  // Seed first 26 items (includes fundamentals, soc, dfir, pentest, vuln, and appsec)
+  await pipeline.ingestBatch(SEED_RESOURCES.slice(0, 26));
 
   const retriever = new HybridRetriever({ db: store });
 

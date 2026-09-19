@@ -106,6 +106,47 @@ export const SEED_RESOURCES = [
     contentSummary: "Clear, visual architectural breakdown of the 7-layer OSI model, explaining how each layer operates and how attacks target specific layers."
   },
 
+  {
+    id: "seed-endpoint-defender",
+    title: "Microsoft Learn: Microsoft Defender for Endpoint Architecture & Lab",
+    canonicalUrl: "https://learn.microsoft.com/en-us/defender-endpoint/microsoft-defender-endpoint",
+    resourceType: "official_doc",
+    provider: { name: "Microsoft", type: "vendor_doc", reputationScore: 0.98 },
+    taxonomy: { domainId: "endpoint_security", subdomainId: "edr_xdr", topics: ["edr_telemetry", "incident_triage", "threat_hunting"] },
+    difficultyLevel: "beginner",
+    prerequisites: ["fundamentals"],
+    conceptsCovered: ["Endpoint Detection & Response (EDR)", "Next-Gen Antivirus (NGAV)", "Attack Surface Reduction (ASR)", "Automated Investigation & Remediation (AIR)", "KQL Threat Hunting"],
+    language: "en",
+    estimatedTimeMinutes: 180,
+    freeAccessStatus: "always_free_open_access",
+    license: "Microsoft Learn Documentation",
+    credibility: { score: 0.98, justification: "Official Microsoft enterprise security architecture and documentation" },
+    provenance: { origin: "internal_index", reviewStatus: "approved", approvedBy: "automated_ruleset" },
+    safetyClassification: "safe_educational",
+    audience: "student",
+    contentSummary: "Official architectural documentation detailing Microsoft Defender for Endpoint, covering behavioral EDR sensors, cloud-delivered antivirus, ASR rules, and incident remediation."
+  },
+  {
+    id: "seed-soc-sentinel",
+    title: "Microsoft Learn: Microsoft Sentinel Cloud SIEM & SOAR Architecture",
+    canonicalUrl: "https://learn.microsoft.com/en-us/azure/sentinel/overview",
+    resourceType: "official_doc",
+    provider: { name: "Microsoft", type: "vendor_doc", reputationScore: 0.98 },
+    taxonomy: { domainId: "security_operations_soc", subdomainId: "siem_soar", topics: ["cloud_siem", "kql_rules", "soar_automation"] },
+    difficultyLevel: "beginner",
+    prerequisites: ["fundamentals"],
+    conceptsCovered: ["Cloud SIEM Analytics", "Kusto Query Language (KQL)", "SOAR Playbooks & Automation", "Incident Investigation Graph", "Data Connectors"],
+    language: "en",
+    estimatedTimeMinutes: 150,
+    freeAccessStatus: "always_free_open_access",
+    license: "Microsoft Learn Documentation",
+    credibility: { score: 0.98, justification: "Official Microsoft Sentinel enterprise cloud SIEM/SOAR documentation" },
+    provenance: { origin: "internal_index", reviewStatus: "approved", approvedBy: "automated_ruleset" },
+    safetyClassification: "safe_educational",
+    audience: "student",
+    contentSummary: "Comprehensive official guide to Microsoft Sentinel, explaining log ingestion at cloud scale, KQL analytics rules for threat detection, incident triage, and automated SOAR playbooks."
+  },
+
   // 2. Security Operations & SOC
   {
     id: "seed-soc-001",

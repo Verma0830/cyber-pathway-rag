@@ -31,10 +31,17 @@ export const TRUSTED_AUTHORITY_DOMAINS = [
   'openpolicyagent.org',
   'cloudflare.com',
   'wireshark.org',
-  'nmap.org'
+  'nmap.org',
+  'microsoft.com',
+  'learn.microsoft.com',
+  'splunk.com',
+  'elastic.co'
 ];
 
 export const AUTHORITY_TOOLS_DIRECTORY = [
+  { name: 'Microsoft Defender for Endpoint', keywords: ['microsoft defender', 'defender', 'mde', 'windows defender', 'ms defender', 'defender for endpoint'], title: 'Microsoft Learn: Microsoft Defender for Endpoint Documentation & Architecture', url: 'https://learn.microsoft.com/en-us/defender-endpoint/microsoft-defender-endpoint', snippet: 'Enterprise endpoint security platform delivering next-generation antivirus, behavioral endpoint detection and response (EDR), attack surface reduction (ASR), and automated remediation.' },
+  { name: 'Microsoft Sentinel', keywords: ['microsoft sentinel', 'sentinel', 'azure sentinel', 'ms sentinel', 'kql'], title: 'Microsoft Learn: Microsoft Sentinel Overview & SIEM/SOAR Architecture', url: 'https://learn.microsoft.com/en-us/azure/sentinel/overview', snippet: 'Cloud-native Security Information and Event Management (SIEM) and Security Orchestration, Automation, and Response (SOAR) solution for intelligent security analytics and enterprise threat response.' },
+  { name: 'Splunk Security', keywords: ['splunk', 'splunk siem', 'splunk enterprise security'], title: 'Splunk Documentation: Security Information and Event Management (SIEM)', url: 'https://docs.splunk.com/Documentation/ES/latest/User/Overview', snippet: 'Leading enterprise SIEM platform for security monitoring, threat detection, investigation, and compliance.' },
   { name: 'OSI Model Guide', keywords: ['osi', 'osi model', '7 layers', 'open systems interconnection'], title: 'Cloudflare Learning Center: What is the OSI Model? (7 Layers Explained)', url: 'https://www.cloudflare.com/learning/ddos/glossary/open-systems-interconnection-model-osi/', snippet: 'Comprehensive architectural guide explaining the 7 layers of the OSI model, data encapsulation, protocols at each layer, and how security mechanisms operate.' },
   { name: 'Network Fundamentals', keywords: ['network+', 'networking fundamentals', 'tcp handshake', 'tcp ip'], title: 'Professor Messer CompTIA Network+ Training Course (Free Video Series)', url: 'https://www.professormesser.com/network-plus/n10-008/n10-008-training-course/', snippet: 'Full free modular training course covering computer networking fundamentals, the OSI model, TCP/IP, and packet analysis.' },
   { name: 'Wireshark', keywords: ['wireshark', 'packet', 'pcap', 'sniffing', 'network traffic'], title: 'Wireshark Official User Guide & Packet Analysis Documentation', url: 'https://www.wireshark.org/docs/wsug_html_chunked/', snippet: 'Comprehensive official guide to packet inspection, display filters, and protocol dissection with Wireshark.' },
@@ -157,7 +164,8 @@ export class FreeWebSearchAdapter extends ISearchProvider {
     // 3. Fallback: Wikipedia Technical OpenSearch API (Never blocked, fast, highly authoritative)
     if (results.length < limit) {
       try {
-        const wikiEndpoint = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(coreQuery)}&limit=${limit}&namespace=0&format=json`;
+        const expandedWikiQuery = coreQuery.replace(/\bms\b/i, 'Microsoft');
+        const wikiEndpoint = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(expandedWikiQuery)}&limit=${limit}&namespace=0&format=json`;
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3500);
 
@@ -169,12 +177,26 @@ export class FreeWebSearchAdapter extends ISearchProvider {
 
         if (wikiRes.ok) {
           const [term, titles, snippets, urls] = await wikiRes.json();
+          const coreTokens = coreQuery.toLowerCase().split(/\s+/).filter(t => t.length > 2);
+
           for (let i = 0; i < titles.length && results.length < limit; i++) {
             const url = urls[i];
             if (!url || results.some(r => r.url === url)) continue;
 
             const ssrf = await validateSafeUrl(url);
             if (!ssrf.safe) continue;
+
+            const titleLower = titles[i].toLowerCase();
+            const snippetLower = (snippets[i] || '').toLowerCase();
+            const combinedText = `${titleLower} ${snippetLower}`;
+
+            // Relevance Guard: Ensure title contains at least one core query token and belongs to software/security domain
+            const matchesCoreToken = coreTokens.some(t => new RegExp('(^|[^a-z0-9])' + t + '([^a-z0-9]|$)', 'i').test(titleLower));
+            const hasTechContext = /(security|cyber|software|computing|protocol|vulnerability|network|detection|firewall|antivirus|cloud|microsoft|operating system)/i.test(combinedText);
+
+            if (!matchesCoreToken || !hasTechContext) {
+              continue; // Reject non-cyber articles like "Med. Sentinel"
+            }
 
             results.push({
               title: `${titles[i]} (Technical Overview & Specification)`,
