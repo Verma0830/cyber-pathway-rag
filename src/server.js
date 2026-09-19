@@ -132,7 +132,7 @@ export async function buildServer(options = {}) {
 
   // RAG Conversational Assistant
   app.post('/api/chat', async (req, reply) => {
-    const { query, filter = {}, userProfile = {}, chatHistory = [] } = req.body || {};
+    const { query, filter = {}, userProfile = {}, chatHistory = [], apiKey = '' } = req.body || {};
     if (!query || query.trim().length === 0) {
       return reply.status(400).send({ error: 'Query cannot be empty' });
     }
@@ -150,7 +150,8 @@ export async function buildServer(options = {}) {
       evidence: retrieval.results,
       userProfile,
       chatHistory,
-      sourceOrigin: retrieval.sourceOrigin
+      sourceOrigin: retrieval.sourceOrigin,
+      apiKey
     });
 
     return {

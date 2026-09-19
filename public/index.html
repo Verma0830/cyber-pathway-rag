@@ -207,23 +207,28 @@
           <div class="chat-header-bar">
             <div class="chat-header-title">
               <span class="status-dot"></span>
-              <span>RAG Assistant & Career Advisor</span>
+              <span>Cybersecurity Mentor & Advisor</span>
+              <span class="ai-mode-pill" id="ai-mode-indicator">⚡ Local Mentor ($0)</span>
             </div>
-            <button class="btn btn-secondary btn-sm" id="btn-clear-chat" title="Clear Conversation">Clear Chat</button>
+            <div class="chat-header-actions" style="display: flex; gap: 0.5rem; align-items: center;">
+              <button class="btn btn-secondary btn-sm" id="btn-ai-settings" title="AI Settings & Free API Key">⚙️ AI Mode</button>
+              <button class="btn btn-secondary btn-sm" id="btn-clear-chat" title="Clear Conversation">Clear Chat</button>
+            </div>
           </div>
 
           <div class="chat-messages" id="chat-messages">
             <div class="message message-assistant">
               <div class="msg-avatar">🛡️</div>
               <div class="msg-body">
-                <p>Welcome! I am your <strong>Cybersecurity Career & Learning Assistant</strong>.</p>
-                <p>I explain concepts using grounded evidence, guide your career progression, and recommend verified, 100% free legal educational resources with direct URLs. I never invent links or promise guaranteed outcomes.</p>
-                <p>Select a quick prompt or type your question below:</p>
+                <p>Hey there! I'm your <strong>Cybersecurity Mentor & Career Advisor</strong>.</p>
+                <p>Think of me as a senior security engineer in your corner. I'm here to chat through your goals, untangle complex security concepts with real-world analogies, and hand-pick the best <strong>100% free, verified learning resources</strong> from our knowledge base (or search the live web for you if needed).</p>
+                <p>Tell me a bit about your background and what you're working toward, or pick a prompt below to get started:</p>
                 <ul class="quick-questions">
-                  <li><button class="btn-chip" data-q="What is the OWASP Top 10 and how do I start learning web security?">OWASP Top 10 Basics</button></li>
-                  <li><button class="btn-chip" data-q="How do I transition from IT helpdesk to a Tier 1 SOC Analyst?">Helpdesk to SOC Analyst</button></li>
-                  <li><button class="btn-chip" data-q="What are the best free labs to practice Linux permissions and SSH?">Free Linux Wargames</button></li>
-                  <li><button class="btn-chip" data-q="Explain Zero Trust Architecture according to NIST SP 800-207">NIST Zero Trust (SP 800-207)</button></li>
+                  <li><button class="btn-chip" data-q="I am brand new to cybersecurity. Where should I start?">🚀 Brand New to Cyber</button></li>
+                  <li><button class="btn-chip" data-q="How do I transition from IT helpdesk to a Tier 1 SOC Analyst?">🛡️ Helpdesk to SOC Analyst</button></li>
+                  <li><button class="btn-chip" data-q="I am a software developer. How do I transition to Application Security (AppSec)?">💻 Developer to AppSec</button></li>
+                  <li><button class="btn-chip" data-q="What is the OWASP Top 10 and how do I start learning web security?">🌐 OWASP Top 10 Guide</button></li>
+                  <li><button class="btn-chip" data-q="What are the best free hands-on labs to practice Linux and ethical hacking?">⚡ Free Hands-on Labs</button></li>
                 </ul>
               </div>
             </div>
@@ -351,6 +356,33 @@
         <span class="mobile-nav-label">Admin</span>
       </button>
     </nav>
+  </div>
+
+  <!-- AI Settings Modal -->
+  <div id="ai-settings-modal" class="modal hidden">
+    <div class="modal-content">
+      <span class="close-modal" id="btn-close-ai-modal">&times;</span>
+      <h3>⚙️ AI Mentor Settings</h3>
+      <p class="subtext">Configure your assistant mode. Zero cost ($0.00) guaranteed.</p>
+      
+      <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 8px; padding: 0.85rem; margin-bottom: 1rem;">
+        <p style="font-size: 0.85rem; color: var(--text-primary); margin-bottom: 0.35rem;"><strong>Current Mode:</strong> <span id="current-ai-mode-text" style="color: var(--accent-cyan);">⚡ Local Expert Mentor (Zero Cost)</span></p>
+        <p style="font-size: 0.78rem; color: var(--text-secondary);">Our built-in mentor provides instant, grounded advice without any API key. To unlock full unconstrained generative dialogue, you can optionally connect a free Google Gemini key.</p>
+      </div>
+
+      <div class="form-group">
+        <label for="input-gemini-key">Google Gemini API Key (Optional):</label>
+        <input type="password" id="input-gemini-key" placeholder="AIzaSy..." autocomplete="off">
+        <small style="display:block; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">
+          Get a free key (no credit card required) at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" style="color: var(--accent-cyan); text-decoration: underline;">Google AI Studio</a>. Saved only in your browser.
+        </small>
+      </div>
+
+      <div style="display: flex; gap: 0.6rem; margin-top: 1rem;">
+        <button type="button" class="btn btn-primary" id="btn-save-ai-key" style="flex: 1;">Save & Activate</button>
+        <button type="button" class="btn btn-secondary" id="btn-clear-ai-key" style="flex: 1;">Reset to Local ($0)</button>
+      </div>
+    </div>
   </div>
 
   <!-- Feedback Modal -->

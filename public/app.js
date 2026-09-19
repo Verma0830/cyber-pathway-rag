@@ -59,6 +59,14 @@ const elements = {
   chipButtons: document.querySelectorAll('.btn-chip'),
   btnClearChat: document.getElementById('btn-clear-chat'),
   btnScrollBottom: document.getElementById('btn-scroll-bottom'),
+  btnAiSettings: document.getElementById('btn-ai-settings'),
+  aiModeIndicator: document.getElementById('ai-mode-indicator'),
+  currentAiModeText: document.getElementById('current-ai-mode-text'),
+  aiSettingsModal: document.getElementById('ai-settings-modal'),
+  btnCloseAiModal: document.getElementById('btn-close-ai-modal'),
+  inputGeminiKey: document.getElementById('input-gemini-key'),
+  btnSaveAiKey: document.getElementById('btn-save-ai-key'),
+  btnClearAiKey: document.getElementById('btn-clear-ai-key'),
 
   // Catalog
   catalogSearch: document.getElementById('catalog-search'),
@@ -88,6 +96,7 @@ const elements = {
 async function init() {
   setupNavigation();
   setupEventListeners();
+  updateAiModeDisplay();
   await loadTaxonomy();
   await loadResources();
   await loadAdminOverview();
@@ -310,6 +319,71 @@ function setupEventListeners() {
       alert('Error submitting report: ' + err.message);
     }
   });
+
+  // AI Mode Settings Modal
+  elements.btnAiSettings?.addEventListener('click', () => {
+    updateAiModeDisplay();
+    elements.aiSettingsModal?.classList.remove('hidden');
+  });
+
+  elements.btnCloseAiModal?.addEventListener('click', () => {
+    elements.aiSettingsModal?.classList.add('hidden');
+  });
+
+  elements.aiSettingsModal?.addEventListener('click', (e) => {
+    if (e.target === elements.aiSettingsModal) {
+      elements.aiSettingsModal.classList.add('hidden');
+    }
+  });
+
+  elements.btnSaveAiKey?.addEventListener('click', () => {
+    const val = (elements.inputGeminiKey?.value || '').trim();
+    if (val) {
+      localStorage.setItem('cyber_gemini_api_key', val);
+      alert('Gemini API key saved! Chat will now use Gemini Flash with live mentor grounding.');
+    } else {
+      localStorage.removeItem('cyber_gemini_api_key');
+      alert('Key cleared. Chat returned to high-caliber Local Mentor mode ($0).');
+    }
+    updateAiModeDisplay();
+    elements.aiSettingsModal?.classList.add('hidden');
+  });
+
+  elements.btnClearAiKey?.addEventListener('click', () => {
+    localStorage.removeItem('cyber_gemini_api_key');
+    updateAiModeDisplay();
+    alert('Switched to high-caliber Local Mentor mode ($0.00 zero cost).');
+    elements.aiSettingsModal?.classList.add('hidden');
+  });
+}
+
+function updateAiModeDisplay() {
+  const key = localStorage.getItem('cyber_gemini_api_key');
+  if (key) {
+    if (elements.aiModeIndicator) {
+      elements.aiModeIndicator.textContent = '✨ Gemini AI (Active)';
+      elements.aiModeIndicator.className = 'ai-mode-pill gemini';
+    }
+    if (elements.currentAiModeText) {
+      elements.currentAiModeText.textContent = '✨ Google Gemini Generative AI (Connected)';
+      elements.currentAiModeText.style.color = 'var(--accent-emerald)';
+    }
+    if (elements.inputGeminiKey) {
+      elements.inputGeminiKey.value = key;
+    }
+  } else {
+    if (elements.aiModeIndicator) {
+      elements.aiModeIndicator.textContent = '⚡ Local Mentor ($0)';
+      elements.aiModeIndicator.className = 'ai-mode-pill';
+    }
+    if (elements.currentAiModeText) {
+      elements.currentAiModeText.textContent = '⚡ Local Expert Mentor (Zero Cost)';
+      elements.currentAiModeText.style.color = 'var(--accent-cyan)';
+    }
+    if (elements.inputGeminiKey) {
+      elements.inputGeminiKey.value = '';
+    }
+  }
 }
 
 function setupChipListeners() {
@@ -709,6 +783,8 @@ async function sendChatQuery(query) {
   state.chatHistory.push({ role: 'user', text: query });
   appendAssistantLoading();
 
+  const apiKey = localStorage.getItem('cyber_gemini_api_key') || '';
+
   try {
     const res = await fetch('/api/chat', {
       method: 'POST',
@@ -716,7 +792,8 @@ async function sendChatQuery(query) {
       body: JSON.stringify({
         query,
         userProfile: state.userProfile,
-        chatHistory: state.chatHistory.slice(-8)
+        chatHistory: state.chatHistory.slice(-8),
+        apiKey
       })
     });
     const data = await res.json();
@@ -727,15 +804,17 @@ async function sendChatQuery(query) {
       state.chatHistory.push({ role: 'assistant', text: data.answer });
     }
 
-    if (data.sourceOrigin === 'live_search') {
-      elements.sufficiencyBadge.textContent = '🌐 Live Web Search';
-      elements.sufficiencyBadge.style.color = 'var(--accent-amber)';
-    } else if (data.sourceOrigin === 'hybrid') {
-      elements.sufficiencyBadge.textContent = '⚡ Hybrid (Index + Web)';
-      elements.sufficiencyBadge.style.color = 'var(--accent-cyan)';
-    } else {
-      elements.sufficiencyBadge.textContent = '📚 Internal Knowledge Base';
-      elements.sufficiencyBadge.style.color = 'var(--accent-emerald)';
+    if (elements.sufficiencyBadge) {
+      if (data.sourceOrigin === 'live_search') {
+        elements.sufficiencyBadge.textContent = '🌐 Live Web Search';
+        elements.sufficiencyBadge.style.color = 'var(--accent-amber)';
+      } else if (data.sourceOrigin === 'hybrid') {
+        elements.sufficiencyBadge.textContent = '⚡ Hybrid (Index + Web)';
+        elements.sufficiencyBadge.style.color = 'var(--accent-cyan)';
+      } else {
+        elements.sufficiencyBadge.textContent = '📚 Internal Knowledge Base';
+        elements.sufficiencyBadge.style.color = 'var(--accent-emerald)';
+      }
     }
 
     const msg = document.createElement('div');
@@ -926,42 +1005,54 @@ function escapeHtml(str) {
 
 function formatMarkdown(text) {
   if (!text) return '';
-  let formatted = escapeHtml(text);
 
-  // Fenced Code blocks
-  formatted = formatted.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/gim, (match, lang, code) => {
-    return `
+  // Extract code blocks first to protect them from regex replacements
+  const codeBlocks = [];
+  let formatted = text.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/gim, (match, lang, code) => {
+    const placeholder = `__CODE_BLOCK_${codeBlocks.length}__`;
+    codeBlocks.push(`
       <div class="code-block-wrapper">
         <div class="code-block-header">
-          <span>${lang || 'code'}</span>
+          <span>${escapeHtml(lang) || 'code'}</span>
           <button class="btn-copy-code" onclick="window.copyCodeSnippet(this)">Copy</button>
         </div>
-        <pre><code>${code.trim()}</code></pre>
+        <pre><code>${escapeHtml(code.trim())}</code></pre>
       </div>
-    `;
+    `);
+    return placeholder;
   });
 
+  formatted = escapeHtml(formatted);
+
   // Headers
-  formatted = formatted.replace(/^### (.*$)/gim, '<h3 style="margin: 0.75rem 0 0.35rem 0; font-size: 1rem; color: var(--accent-cyan);">$1</h3>');
-  formatted = formatted.replace(/^## (.*$)/gim, '<h2 style="margin: 1rem 0 0.5rem 0; font-size: 1.1rem;">$1</h2>');
+  formatted = formatted.replace(/^### (.*$)/gim, '<h3 style="margin: 0.85rem 0 0.4rem 0; font-size: 1rem; color: var(--accent-cyan);">$1</h3>');
+  formatted = formatted.replace(/^## (.*$)/gim, '<h2 style="margin: 1.1rem 0 0.5rem 0; font-size: 1.1rem; color: var(--accent-cyan);">$1</h2>');
 
   // Bold & Italic
   formatted = formatted.replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>');
   formatted = formatted.replace(/\*(.*?)\*/gim, '<em>$1</em>');
 
-  // Markdown Links
-  formatted = formatted.replace(/\[(.*?)\]\((.*?)\)/gim, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color: var(--accent-cyan); text-decoration: underline;">$1</a>');
+  // Markdown Links [Title](URL)
+  formatted = formatted.replace(/\[(.*?)\]\((.*?)\)/gim, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color: var(--accent-cyan); text-decoration: underline; font-weight: 500;">$1</a>');
 
-  // Inline code & blockquotes
-  formatted = formatted.replace(/`([^`]+)`/gim, '<code style="background: rgba(255,255,255,0.1); padding: 0.1rem 0.3rem; border-radius: 4px; font-family: monospace;">$1</code>');
-  formatted = formatted.replace(/^> (.*$)/gim, '<blockquote style="border-left: 3px solid var(--accent-cyan); padding-left: 0.75rem; margin: 0.5rem 0; color: var(--text-secondary);">$1</blockquote>');
+  // Inline code
+  formatted = formatted.replace(/`([^`]+)`/gim, '<code style="background: rgba(255,255,255,0.1); padding: 0.1rem 0.35rem; border-radius: 4px; font-family: monospace; font-size: 0.85em;">$1</code>');
 
-  // Lists
-  formatted = formatted.replace(/^\s*-\s+(.*$)/gim, '<li>$1</li>');
-  formatted = formatted.replace(/(<li>[\s\S]*?<\/li>)/gim, '<ul style="margin: 0.5rem 0; padding-left: 1.25rem;">$1</ul>');
+  // Blockquotes
+  formatted = formatted.replace(/^> (.*$)/gim, '<blockquote style="border-left: 3px solid var(--accent-cyan); margin: 0.65rem 0; color: var(--text-secondary); background: rgba(56, 189, 248, 0.05); border-radius: 0 4px 4px 0; padding: 0.4rem 0.75rem;">$1</blockquote>');
 
-  // Newlines
+  // Lists (bullet points with •, -, or *)
+  formatted = formatted.replace(/^\s*[•\-*]\s+(.*$)/gim, '<li>$1</li>');
+  formatted = formatted.replace(/(<li>[\s\S]*?<\/li>\s*)+/gim, (match) => `<ul style="margin: 0.5rem 0; padding-left: 1.25rem;">${match}</ul>`);
+
+  // Paragraph breaks
   formatted = formatted.replace(/\n\n/g, '<br><br>');
+  formatted = formatted.replace(/\n(?!\s*<(\/?ul|\/?li|h3|h2|blockquote))/gim, '<br>');
+
+  // Restore code blocks
+  codeBlocks.forEach((block, idx) => {
+    formatted = formatted.replace(`__CODE_BLOCK_${idx}__`, block);
+  });
 
   return formatted;
 }
