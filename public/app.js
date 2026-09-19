@@ -10,13 +10,27 @@ const state = {
   currentRoadmap: null,
   resources: [],
   userProfile: JSON.parse(localStorage.getItem('cyber_user_profile') || '{}'),
-  roadmapProgress: JSON.parse(localStorage.getItem('cyber_roadmap_progress') || '{}')
+  studyProgress: JSON.parse(localStorage.getItem('cyber_study_progress') || '{}'),
+  catalogFilters: {
+    search: '',
+    domain: '',
+    level: '',
+    type: ''
+  }
 };
 
 // DOM Elements
 const elements = {
+  // Navigation & Drawer
+  btnHamburger: document.getElementById('btn-hamburger'),
+  btnCloseDrawer: document.getElementById('btn-close-drawer'),
+  navDrawer: document.getElementById('nav-drawer'),
+  drawerOverlay: document.getElementById('drawer-overlay'),
+  drawerItems: document.querySelectorAll('.drawer-item'),
   navTabs: document.querySelectorAll('.nav-tab'),
   tabPanes: document.querySelectorAll('.tab-pane'),
+
+  // Roadmap & Quiz
   quizForm: document.getElementById('quiz-form'),
   recResults: document.getElementById('recommendation-results'),
   recList: document.getElementById('recommended-tracks-list'),
@@ -28,19 +42,27 @@ const elements = {
   rmTime: document.getElementById('rm-time'),
   rmRoles: document.getElementById('rm-roles'),
   rmImmediateActionText: document.getElementById('rm-immediate-action-text'),
-  
+  rmProgressPercent: document.getElementById('rm-progress-percent'),
+  rmProgressFill: document.getElementById('rm-progress-fill'),
+  btnToggleAccordion: document.getElementById('btn-toggle-accordion'),
+  btnExportMarkdown: document.getElementById('btn-export-markdown'),
+  btnPrintRoadmap: document.getElementById('btn-print-roadmap'),
+
   // Chat
   chatForm: document.getElementById('chat-form'),
   chatInput: document.getElementById('chat-input'),
   chatMessages: document.getElementById('chat-messages'),
   sufficiencyBadge: document.getElementById('rag-sufficiency-indicator'),
   chipButtons: document.querySelectorAll('.btn-chip'),
+  btnClearChat: document.getElementById('btn-clear-chat'),
+  btnScrollBottom: document.getElementById('btn-scroll-bottom'),
 
   // Catalog
   catalogSearch: document.getElementById('catalog-search'),
   domainFilter: document.getElementById('catalog-domain-filter'),
   levelFilter: document.getElementById('catalog-level-filter'),
   typeFilter: document.getElementById('catalog-type-filter'),
+  filterChips: document.querySelectorAll('.filter-chip'),
   resourcesGrid: document.getElementById('resources-grid'),
   visibleCount: document.getElementById('catalog-visible-count'),
 
@@ -61,27 +83,225 @@ const elements = {
 
 // --- Initialization ---
 async function init() {
-  setupTabs();
+  setupNavigation();
   setupEventListeners();
   await loadTaxonomy();
   await loadResources();
   await loadAdminOverview();
 }
 
-// Tabs setup
-function setupTabs() {
+// --- Navigation & Drawer Setup ---
+function setupNavigation() {
+  function switchTab(targetTab) {
+    state.activeTab = targetTab;
+
+    elements.navTabs.forEach(t => {
+      t.classList.toggle('active', t.dataset.tab === targetTab);
+    });
+
+    elements.drawerItems.forEach(item => {
+      item.classList.toggle('active', item.dataset.tab === targetTab);
+    });
+
+    elements.tabPanes.forEach(p => {
+      p.classList.toggle('active', p.id === targetTab);
+    });
+
+    closeDrawer();
+
+    if (targetTab === 'tab-admin') {
+      loadAdminOverview();
+    }
+  }
+
   elements.navTabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      const target = tab.dataset.tab;
-      elements.navTabs.forEach(t => t.classList.remove('active'));
-      elements.tabPanes.forEach(p => p.classList.remove('active'));
+    tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+  });
 
-      tab.classList.add('active');
-      document.getElementById(target).classList.add('active');
-      state.activeTab = target;
+  elements.drawerItems.forEach(item => {
+    item.addEventListener('click', () => switchTab(item.dataset.tab));
+  });
 
-      if (target === 'tab-admin') {
-        loadAdminOverview();
+  function openDrawer() {
+    elements.navDrawer?.classList.add('open');
+    elements.drawerOverlay?.classList.add('open');
+    elements.btnHamburger?.classList.add('active');
+  }
+
+  function closeDrawer() {
+    elements.navDrawer?.classList.remove('open');
+    elements.drawerOverlay?.classList.remove('open');
+    elements.btnHamburger?.classList.remove('active');
+  }
+
+  function toggleDrawer() {
+    if (elements.navDrawer?.classList.contains('open')) {
+      closeDrawer();
+    } else {
+      openDrawer();
+    }
+  }
+
+  elements.btnHamburger?.addEventListener('click', toggleDrawer);
+  elements.btnCloseDrawer?.addEventListener('click', closeDrawer);
+  elements.drawerOverlay?.addEventListener('click', closeDrawer);
+}
+
+// --- Event Listeners ---
+function setupEventListeners() {
+  // Quiz
+  elements.quizForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await handleDiagnosticSubmit();
+  });
+
+  // Chat
+  elements.chatForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const query = elements.chatInput.value.trim();
+    if (!query) return;
+    elements.chatInput.value = '';
+    appendUserMessage(query);
+    await sendChatQuery(query);
+  });
+
+  setupChipListeners();
+
+  elements.btnClearChat?.addEventListener('click', () => {
+    if (confirm('Clear conversation history?')) {
+      elements.chatMessages.innerHTML = `
+        <div class="message message-assistant">
+          <div class="msg-avatar">🛡️</div>
+          <div class="msg-body">
+            <p>Welcome! I am your <strong>Cybersecurity Career & Learning Assistant</strong>.</p>
+            <p>I explain concepts using grounded evidence, guide your career progression, and recommend verified, 100% free legal educational resources with direct URLs. I never invent links or promise guaranteed outcomes.</p>
+            <p>Select a quick prompt or type your question below:</p>
+            <ul class="quick-questions">
+              <li><button class="btn-chip" data-q="What is the OWASP Top 10 and how do I start learning web security?">OWASP Top 10 Basics</button></li>
+              <li><button class="btn-chip" data-q="How do I transition from IT helpdesk to a Tier 1 SOC Analyst?">Helpdesk to SOC Analyst</button></li>
+              <li><button class="btn-chip" data-q="What are the best free labs to practice Linux permissions and SSH?">Free Linux Wargames</button></li>
+              <li><button class="btn-chip" data-q="Explain Zero Trust Architecture according to NIST SP 800-207">NIST Zero Trust (SP 800-207)</button></li>
+            </ul>
+          </div>
+        </div>
+      `;
+      setupChipListeners();
+    }
+  });
+
+  // Chat Scroll-to-Bottom Floating Button
+  elements.chatMessages?.addEventListener('scroll', () => {
+    const fromBottom = elements.chatMessages.scrollHeight - elements.chatMessages.scrollTop - elements.chatMessages.clientHeight;
+    if (fromBottom > 150) {
+      elements.btnScrollBottom?.classList.remove('hidden');
+    } else {
+      elements.btnScrollBottom?.classList.add('hidden');
+    }
+  });
+
+  elements.btnScrollBottom?.addEventListener('click', () => {
+    elements.chatMessages.scrollTo({ top: elements.chatMessages.scrollHeight, behavior: 'smooth' });
+  });
+
+  // Roadmap Action Buttons
+  elements.btnToggleAccordion?.addEventListener('click', () => {
+    const stageCards = document.querySelectorAll('.stage-card');
+    const anyOpen = Array.from(stageCards).some(c => !c.classList.contains('collapsed'));
+    stageCards.forEach(c => {
+      c.classList.toggle('collapsed', anyOpen);
+    });
+  });
+
+  elements.btnExportMarkdown?.addEventListener('click', exportRoadmapAsMarkdown);
+  elements.btnPrintRoadmap?.addEventListener('click', () => window.print());
+
+  // Catalog Debounced Search
+  let searchTimeout;
+  elements.catalogSearch?.addEventListener('input', (e) => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      state.catalogFilters.search = e.target.value.toLowerCase().trim();
+      filterAndRenderCatalog();
+    }, 150);
+  });
+
+  elements.domainFilter?.addEventListener('change', (e) => {
+    state.catalogFilters.domain = e.target.value;
+    filterAndRenderCatalog();
+  });
+
+  elements.levelFilter?.addEventListener('change', (e) => {
+    state.catalogFilters.level = e.target.value;
+    filterAndRenderCatalog();
+  });
+
+  elements.typeFilter?.addEventListener('change', (e) => {
+    state.catalogFilters.type = e.target.value;
+    filterAndRenderCatalog();
+  });
+
+  // Catalog Quick Filter Chips
+  elements.filterChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      elements.filterChips.forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+
+      const typeFilter = chip.dataset.typeFilter;
+      const levelFilter = chip.dataset.levelFilter;
+
+      if (typeFilter !== undefined) {
+        state.catalogFilters.type = typeFilter;
+        if (elements.typeFilter) elements.typeFilter.value = typeFilter;
+      }
+      if (levelFilter !== undefined) {
+        state.catalogFilters.level = levelFilter;
+        if (elements.levelFilter) elements.levelFilter.value = levelFilter;
+      }
+
+      filterAndRenderCatalog();
+    });
+  });
+
+  // Modal
+  elements.btnCloseModal?.addEventListener('click', () => {
+    elements.feedbackModal.classList.add('hidden');
+  });
+
+  elements.feedbackModal?.addEventListener('click', (e) => {
+    if (e.target === elements.feedbackModal) {
+      elements.feedbackModal.classList.add('hidden');
+    }
+  });
+
+  elements.feedbackForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const resourceId = elements.modalResId.value;
+    const issueType = document.getElementById('feedback-issue').value;
+    const details = document.getElementById('feedback-details').value;
+
+    try {
+      const res = await fetch('/api/feedback/link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resourceId, issueType, details })
+      });
+      const data = await res.json();
+      alert('Thank you! Feedback recorded: ' + (data.message || 'Report registered.'));
+      elements.feedbackModal.classList.add('hidden');
+      elements.feedbackForm.reset();
+    } catch (err) {
+      alert('Error submitting report: ' + err.message);
+    }
+  });
+}
+
+function setupChipListeners() {
+  document.querySelectorAll('.btn-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const q = btn.dataset.q;
+      if (q) {
+        elements.chatInput.value = q;
+        elements.chatForm.dispatchEvent(new Event('submit'));
       }
     });
   });
@@ -94,12 +314,11 @@ async function loadTaxonomy() {
     const data = await res.json();
     state.taxonomy = data.domains || [];
 
-    // Populate catalog domain filter
     elements.domainFilter.innerHTML = '<option value="">All 26 Domains</option>';
     state.taxonomy.forEach(d => {
       const opt = document.createElement('option');
       opt.value = d.id;
-      opt.textContent = d.name;
+      opt.textContent = `${d.name} (${d.category})`;
       elements.domainFilter.appendChild(opt);
     });
   } catch (err) {
@@ -107,95 +326,35 @@ async function loadTaxonomy() {
   }
 }
 
-// Event Listeners
-function setupEventListeners() {
-  // Quiz submit
-  elements.quizForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const bg = document.getElementById('quiz-bg').value;
-    const interest = document.getElementById('quiz-interest').value;
-    const hours = document.getElementById('quiz-hours').value;
-    const timeline = document.getElementById('quiz-timeline').value;
-    const prereqs = document.getElementById('quiz-prereqs').value;
+// --- Diagnostic Profiling & Roadmap ---
 
-    state.userProfile = {
-      current_background: bg,
-      primary_interest: interest,
-      weekly_hours: hours,
-      weeklyHours: hours === 'casual' ? 4 : (hours === 'intensive' ? 25 : 10),
-      target_timeline: timeline,
-      completed_prerequisites: prereqs
-    };
-    localStorage.setItem('cyber_user_profile', JSON.stringify(state.userProfile));
+async function handleDiagnosticSubmit() {
+  const bg = document.getElementById('quiz-bg').value;
+  const interest = document.getElementById('quiz-interest').value;
+  const hours = document.getElementById('quiz-hours').value;
+  const timeline = document.getElementById('quiz-timeline').value;
+  const prereqs = document.getElementById('quiz-prereqs').value;
 
-    await getRecommendations(state.userProfile);
-  });
+  state.userProfile = {
+    technicalBackground: bg,
+    interestTrack: interest,
+    weeklyStudyHours: hours === 'casual' ? 4 : hours === 'intensive' ? 25 : 12,
+    targetTimeline: timeline,
+    completedPrerequisites: prereqs === 'multiple' ? ['linux_cli', 'networking_basics', 'python_scripting'] : prereqs === 'linux_basic' ? ['linux_cli'] : prereqs === 'networking_basic' ? ['networking_basics'] : []
+  };
 
-  // Chat submit
-  elements.chatForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const query = elements.chatInput.value.trim();
-    if (!query) return;
+  localStorage.setItem('cyber_user_profile', JSON.stringify(state.userProfile));
 
-    appendUserMessage(query);
-    elements.chatInput.value = '';
-    await sendChatQuery(query);
-  });
-
-  // Quick chips in chat
-  elements.chipButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const q = btn.dataset.q;
-      elements.chatInput.value = q;
-      elements.chatForm.dispatchEvent(new Event('submit'));
-    });
-  });
-
-  // Catalog filters
-  elements.catalogSearch.addEventListener('input', filterAndRenderCatalog);
-  elements.domainFilter.addEventListener('change', filterAndRenderCatalog);
-  elements.levelFilter.addEventListener('change', filterAndRenderCatalog);
-  elements.typeFilter.addEventListener('change', filterAndRenderCatalog);
-
-  // Modal
-  elements.btnCloseModal.addEventListener('click', () => {
-    elements.feedbackModal.classList.add('hidden');
-  });
-
-  elements.feedbackForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const resourceId = elements.modalResId.value;
-    const issueType = document.getElementById('feedback-issue').value;
-    const details = document.getElementById('feedback-details').value;
-
-    try {
-      await fetch('/api/feedback/link', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resourceId, issueType, details })
-      });
-      alert('Thank you! Issue report submitted for administrator review.');
-      elements.feedbackModal.classList.add('hidden');
-      elements.feedbackForm.reset();
-    } catch (err) {
-      alert('Error submitting report: ' + err.message);
-    }
-  });
-}
-
-// --- Roadmap & Career Profiler ---
-
-async function getRecommendations(profile) {
   try {
     const res = await fetch('/api/profile/recommend', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(profile)
+      body: JSON.stringify({ answers: state.userProfile })
     });
     const data = await res.json();
     renderRecommendations(data.recommendations || []);
   } catch (err) {
-    console.error('Error getting recommendations:', err);
+    console.error('Diagnostic error:', err);
   }
 }
 
@@ -217,7 +376,6 @@ function renderRecommendations(recs) {
     elements.recList.appendChild(item);
   });
 
-  // Auto-generate for top track
   if (recs.length > 0) {
     generateAndDisplayRoadmap(recs[0].domainId, recs[0].rationale);
   }
@@ -255,44 +413,86 @@ function renderRoadmap(rm) {
     elements.rmImmediateActionText.textContent = rm.immediateNextAction;
   }
 
-  // Render the 5 Stages
-  rm.stages.forEach(stage => {
+  // Render 5 Stages
+  rm.stages.forEach((stage, sIdx) => {
     const stageCard = document.createElement('div');
     stageCard.className = 'stage-card';
+    if (sIdx > 0) {
+      stageCard.classList.add('collapsed');
+    }
 
     const stageKey = stage.stageName?.toLowerCase() || 'foundations';
     const levelClass = `badge-${stageKey}`;
 
     let resourcesHtml = '';
-    (stage.recommendedResources || []).forEach(r => {
-      const provBadge = r.provenanceBadge === 'Live search' ? '`[Live search]`' : '`[Indexed]`';
+    (stage.recommendedResources || []).forEach((r, rIdx) => {
+      const provBadge = r.provenanceBadge === 'Live search' ? 'Live search' : 'Indexed';
+      const provClass = r.provenanceBadge === 'Live search' ? 'prov-live' : 'prov-indexed';
+      const resKey = `res_${stage.stageNumber}_${rIdx}`;
+      const isChecked = !!state.studyProgress[resKey];
+
       resourcesHtml += `
         <div class="resource-detail-box">
           <div class="res-title-row">
-            <a href="${r.canonicalUrl}" target="_blank" rel="noopener noreferrer" class="resource-link">
-              📄 <strong>${r.title}</strong>
-            </a>
-            <span class="provenance-tag ${r.provenanceBadge === 'Live search' ? 'prov-live' : 'prov-indexed'}">${provBadge}</span>
+            <label class="study-item ${isChecked ? 'completed' : ''}" style="margin: 0;">
+              <input type="checkbox" data-study-key="${resKey}" ${isChecked ? 'checked' : ''}>
+              <a href="${r.canonicalUrl}" target="_blank" rel="noopener noreferrer" class="resource-link" onclick="event.stopPropagation();">
+                ${r.title}
+              </a>
+            </label>
+            <span class="provenance-tag ${provClass}">[${provBadge}]</span>
           </div>
           <div class="res-detail-subtext">
-            <span><strong>Format:</strong> ${r.resourceType}</span> |
-            <span><strong>Difficulty:</strong> ${r.difficultyLevel}</span> |
-            <span><strong>Provider:</strong> ${r.providerName}</span> |
+            <span><strong>Format:</strong> ${r.resourceType}</span> •
+            <span><strong>Difficulty:</strong> ${r.difficultyLevel}</span> •
+            <span><strong>Provider:</strong> ${r.providerName}</span> •
             <span><strong>Validated:</strong> ${r.lastValidationDate || 'Recent'}</span>
           </div>
-          <div class="res-why">💡 <em>Why it is recommended:</em> ${r.whyRecommended}</div>
+          <div class="res-why">💡 ${r.whyRecommended}</div>
         </div>
       `;
     });
 
     let labsHtml = '';
-    (stage.practicalExercises || []).forEach(lab => {
-      labsHtml += `<li>⚡ ${lab}</li>`;
+    (stage.practicalExercises || []).forEach((lab, lIdx) => {
+      const labKey = `lab_${stage.stageNumber}_${lIdx}`;
+      const isChecked = !!state.studyProgress[labKey];
+      labsHtml += `
+        <li>
+          <label class="study-item ${isChecked ? 'completed' : ''}">
+            <input type="checkbox" data-study-key="${labKey}" ${isChecked ? 'checked' : ''}>
+            <span>${lab}</span>
+          </label>
+        </li>
+      `;
     });
 
     let topicsHtml = '';
-    (stage.topics || []).forEach(t => {
-      topicsHtml += `<li>• ${t.replace(/_/g, ' ')}</li>`;
+    (stage.topics || []).forEach((t, tIdx) => {
+      const topicKey = `topic_${stage.stageNumber}_${tIdx}`;
+      const isChecked = !!state.studyProgress[topicKey];
+      topicsHtml += `
+        <li>
+          <label class="study-item ${isChecked ? 'completed' : ''}">
+            <input type="checkbox" data-study-key="${topicKey}" ${isChecked ? 'checked' : ''}>
+            <span>${t.replace(/_/g, ' ')}</span>
+          </label>
+        </li>
+      `;
+    });
+
+    let objectivesHtml = '';
+    (stage.learningObjectives || []).forEach((obj, oIdx) => {
+      const objKey = `obj_${stage.stageNumber}_${oIdx}`;
+      const isChecked = !!state.studyProgress[objKey];
+      objectivesHtml += `
+        <li>
+          <label class="study-item ${isChecked ? 'completed' : ''}">
+            <input type="checkbox" data-study-key="${objKey}" ${isChecked ? 'checked' : ''}>
+            <span>${obj}</span>
+          </label>
+        </li>
+      `;
     });
 
     let prereqsHtml = (stage.prerequisites && stage.prerequisites.length > 0)
@@ -305,28 +505,31 @@ function renderRoadmap(rm) {
           <span>Stage ${stage.stageNumber}: ${stage.stageName} — ${stage.title}</span>
           <span class="stage-level-badge ${levelClass}">${stage.stageName}</span>
         </div>
-        <span class="stat-pill">${stage.estimatedTimeRange}</span>
+        <div class="stage-header-right">
+          <span class="stat-pill">${stage.estimatedTimeRange}</span>
+          <span class="accordion-chevron">▼</span>
+        </div>
       </div>
       <div class="stage-body">
-        <div class="stage-section-title">🔑 Stage Prerequisites</div>
+        <div class="stage-section-title">Stage Prerequisites</div>
         <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 0.75rem;">${prereqsHtml}</p>
 
-        <div class="stage-section-title">🎯 Key Learning Objectives</div>
+        <div class="stage-section-title">Key Learning Objectives</div>
         <ul class="checklist">
-          ${(stage.learningObjectives || []).map(obj => `<li>✓ ${obj}</li>`).join('')}
+          ${objectivesHtml}
         </ul>
 
-        <div class="stage-section-title">📖 Core Topics (Prerequisite Order)</div>
+        <div class="stage-section-title">Core Topics (Prerequisite Order)</div>
         <ul class="checklist">
           ${topicsHtml}
         </ul>
 
-        <div class="stage-section-title">📚 Verified Free Learning Resources</div>
+        <div class="stage-section-title">Verified Free Learning Resources</div>
         <div class="resource-chip-list">
           ${resourcesHtml}
         </div>
 
-        <div class="stage-section-title">🧪 Practical Legal Exercises & Labs</div>
+        <div class="stage-section-title">Practical Exercises & Hands-on Labs</div>
         <ul class="checklist">
           ${labsHtml}
         </ul>
@@ -336,14 +539,128 @@ function renderRoadmap(rm) {
           <p>${stage.portfolioProject?.description || 'Build and document a hands-on project.'}</p>
         </div>
 
-        <div class="stage-section-title" style="margin-top: 1rem;">🏁 Progress Checkpoint & Advancement Criteria</div>
+        <div class="stage-section-title" style="margin-top: 1rem;">Progress Checkpoint & Advancement Criteria</div>
         <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 0.35rem;"><strong>Checkpoint:</strong> ${stage.progressCheckpoint}</p>
         <p style="font-size: 0.82rem; color: var(--accent-cyan);"><strong>Advancement Criteria:</strong> ${stage.criteriaForAdvancing}</p>
       </div>
     `;
 
+    // Accordion toggle
+    const header = stageCard.querySelector('.stage-header');
+    header.addEventListener('click', () => {
+      stageCard.classList.toggle('collapsed');
+    });
+
     elements.stagesContainer.appendChild(stageCard);
   });
+
+  setupProgressCheckboxes();
+  updateProgressCalculation();
+}
+
+function setupProgressCheckboxes() {
+  const checkboxes = elements.stagesContainer.querySelectorAll('input[type="checkbox"]');
+  checkboxes.forEach(cb => {
+    cb.addEventListener('change', () => {
+      const key = cb.dataset.studyKey;
+      state.studyProgress[key] = cb.checked;
+      localStorage.setItem('cyber_study_progress', JSON.stringify(state.studyProgress));
+
+      const parentLabel = cb.closest('.study-item');
+      if (parentLabel) {
+        parentLabel.classList.toggle('completed', cb.checked);
+      }
+
+      updateProgressCalculation();
+    });
+  });
+}
+
+function updateProgressCalculation() {
+  const allCheckboxes = elements.stagesContainer.querySelectorAll('input[type="checkbox"]');
+  if (allCheckboxes.length === 0) return;
+
+  let checkedCount = 0;
+  allCheckboxes.forEach(cb => {
+    if (cb.checked) checkedCount++;
+  });
+
+  const percentage = Math.round((checkedCount / allCheckboxes.length) * 100);
+  if (elements.rmProgressPercent) {
+    elements.rmProgressPercent.textContent = `${percentage}% Completed (${checkedCount}/${allCheckboxes.length})`;
+  }
+  if (elements.rmProgressFill) {
+    elements.rmProgressFill.style.width = `${percentage}%`;
+  }
+}
+
+// Export Roadmap as Markdown
+function exportRoadmapAsMarkdown() {
+  const rm = state.currentRoadmap;
+  if (!rm) {
+    alert('Generate a roadmap first before exporting.');
+    return;
+  }
+
+  let md = `# ${rm.title}\n\n`;
+  md += `> **Matching Rationale:** ${rm.matchingRationale}\n\n`;
+  md += `- **Estimated Duration:** ~${rm.estimatedTotalWeeks} Weeks\n`;
+  md += `- **Target Career Roles:** ${rm.targetRoles.join(', ')}\n\n`;
+  md += `---\n\n`;
+
+  rm.stages.forEach(stage => {
+    md += `## Stage ${stage.stageNumber}: ${stage.stageName} — ${stage.title}\n`;
+    md += `*Estimated Time:* ${stage.estimatedTimeRange}\n\n`;
+    
+    md += `### 🎯 Learning Objectives\n`;
+    (stage.learningObjectives || []).forEach(obj => {
+      md += `- [ ] ${obj}\n`;
+    });
+    md += `\n`;
+
+    md += `### 📖 Core Topics\n`;
+    (stage.topics || []).forEach(topic => {
+      md += `- [ ] ${topic.replace(/_/g, ' ')}\n`;
+    });
+    md += `\n`;
+
+    md += `### 📚 Verified Resources\n`;
+    (stage.recommendedResources || []).forEach(res => {
+      md += `- [${res.title}](${res.canonicalUrl}) (${res.resourceType}, ${res.difficultyLevel}, ${res.providerName})\n`;
+      md += `  - *Why:* ${res.whyRecommended}\n`;
+    });
+    md += `\n`;
+
+    md += `### ⚡ Hands-on Labs\n`;
+    (stage.practicalExercises || []).forEach(lab => {
+      md += `- [ ] ${lab}\n`;
+    });
+    md += `\n`;
+
+    if (stage.portfolioProject) {
+      md += `### 🏆 Portfolio Project: ${stage.portfolioProject.title}\n`;
+      md += `${stage.portfolioProject.description}\n\n`;
+    }
+
+    md += `---\n\n`;
+  });
+
+  if (rm.immediateNextAction) {
+    md += `## ⚡ Concrete Immediate Next Action\n\n`;
+    md += `${rm.immediateNextAction}\n\n`;
+  }
+
+  md += `*Generated by CyberPathway RAG • 100% Free & Legal Knowledge Base*\n`;
+
+  const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `cyber-pathway-${(rm.domainId || 'roadmap')}.md`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // --- RAG Chat ---
@@ -384,7 +701,6 @@ async function sendChatQuery(query) {
 
     document.getElementById('loading-bubble')?.remove();
 
-    // Update sufficiency indicator badge
     if (data.sourceOrigin === 'live_search') {
       elements.sufficiencyBadge.textContent = '🌐 Live Search Fallback';
       elements.sufficiencyBadge.style.color = 'var(--accent-amber)';
@@ -399,6 +715,9 @@ async function sendChatQuery(query) {
       <div class="msg-avatar">🛡️</div>
       <div class="msg-body">
         <div>${formatMarkdown(data.answer)}</div>
+        <div class="msg-actions">
+          <button class="btn-copy-msg" onclick="window.copyMessageText(this)">📋 Copy</button>
+        </div>
       </div>
     `;
     elements.chatMessages.appendChild(msg);
@@ -415,6 +734,26 @@ async function sendChatQuery(query) {
   }
 }
 
+window.copyMessageText = function(btn) {
+  const msgBody = btn.closest('.msg-body');
+  if (!msgBody) return;
+  const text = msgBody.innerText.replace(/📋 Copy/, '').trim();
+  navigator.clipboard.writeText(text).then(() => {
+    const originalText = btn.textContent;
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => { btn.textContent = originalText; }, 1800);
+  });
+};
+
+window.copyCodeSnippet = function(btn) {
+  const pre = btn.closest('.code-block-wrapper').querySelector('pre code');
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => { btn.textContent = 'Copy'; }, 1800);
+  });
+};
+
 // --- Resource Catalog ---
 
 async function loadResources() {
@@ -429,18 +768,15 @@ async function loadResources() {
 }
 
 function filterAndRenderCatalog() {
-  const searchTerm = elements.catalogSearch.value.toLowerCase().trim();
-  const domain = elements.domainFilter.value;
-  const level = elements.levelFilter.value;
-  const type = elements.typeFilter.value;
+  const { search, domain, level, type } = state.catalogFilters;
 
   const filtered = state.resources.filter(r => {
     if (domain && r.taxonomy?.domainId !== domain) return false;
     if (level && r.difficultyLevel !== level) return false;
     if (type && r.resourceType !== type) return false;
-    if (searchTerm) {
+    if (search) {
       const corpus = `${r.title} ${r.contentSummary || ''} ${(r.conceptsCovered || []).join(' ')}`.toLowerCase();
-      if (!corpus.includes(searchTerm)) return false;
+      if (!corpus.includes(search)) return false;
     }
     return true;
   });
@@ -462,21 +798,20 @@ function filterAndRenderCatalog() {
         </div>
         <p class="res-summary">${r.contentSummary || 'No summary available.'}</p>
         <div class="res-meta">
-          <span class="tag-badge">🏢 ${r.provider?.name || 'Verified'}</span>
-          <span class="tag-badge">📊 ${r.difficultyLevel}</span>
-          <span class="tag-badge">⏱️ ${r.estimatedTimeMinutes} min</span>
+          <span class="tag-badge">${r.provider?.name || 'Verified'}</span>
+          <span class="tag-badge">${r.difficultyLevel}</span>
+          <span class="tag-badge">${r.estimatedTimeMinutes} min</span>
         </div>
       </div>
       <div class="res-footer">
-        <span class="provenance-tag ${provClass}">${provLabel}</span>
-        <button class="btn-report" onclick="window.openReportModal('${r.id}', '${escapeHtml(r.title)}')">🚩 Report Link</button>
+        <span class="provenance-tag ${provClass}">[${provLabel}]</span>
+        <button class="btn-report" onclick="window.openReportModal('${r.id}', '${escapeHtml(r.title)}')">Report Link</button>
       </div>
     `;
     elements.resourcesGrid.appendChild(card);
   });
 }
 
-// Global modal trigger
 window.openReportModal = function(id, title) {
   elements.modalResId.value = id;
   elements.modalResTitle.textContent = title;
@@ -494,7 +829,6 @@ async function loadAdminOverview() {
     elements.adminPending.textContent = data.pendingReviewCount;
     elements.adminDead.textContent = data.deadLinkCount;
 
-    // Render pending table
     if (data.pendingResources.length === 0) {
       elements.adminPendingTable.innerHTML = '<p class="subtext">Zero pending resources in quarantine queue. All clean!</p>';
     } else {
@@ -511,7 +845,7 @@ async function loadAdminOverview() {
             <td><strong>${escapeHtml(r.title)}</strong></td>
             <td><a href="${r.canonicalUrl}" target="_blank">${r.canonicalUrl.slice(0, 45)}...</a></td>
             <td>${r.provenance?.discoveredAt?.slice(0, 10) || 'Recent'}</td>
-            <td><button class="btn btn-primary" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" onclick="window.approveResource('${r.id}')">✓ Approve</button></td>
+            <td><button class="btn btn-primary" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" onclick="window.approveResource('${r.id}')">Approve</button></td>
           </tr>
         `;
       });
@@ -519,7 +853,6 @@ async function loadAdminOverview() {
       elements.adminPendingTable.innerHTML = tableHtml;
     }
 
-    // Render feedback
     if (data.userFeedback.length === 0) {
       elements.adminFeedbackTable.innerHTML = '<p class="subtext">No open broken link reports from learners.</p>';
     } else {
@@ -532,7 +865,7 @@ async function loadAdminOverview() {
         fbHtml += `
           <tr>
             <td>${f.resource_id}</td>
-            <td><span class="badge badge-verified">${f.issue_type}</span></td>
+            <td><span class="badge">${f.issue_type}</span></td>
             <td>${escapeHtml(f.details || 'No details')}</td>
             <td>${f.created_at.slice(0, 10)}</td>
           </tr>
@@ -566,6 +899,19 @@ function formatMarkdown(text) {
   if (!text) return '';
   let formatted = escapeHtml(text);
 
+  // Fenced Code blocks
+  formatted = formatted.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/gim, (match, lang, code) => {
+    return `
+      <div class="code-block-wrapper">
+        <div class="code-block-header">
+          <span>${lang || 'code'}</span>
+          <button class="btn-copy-code" onclick="window.copyCodeSnippet(this)">Copy</button>
+        </div>
+        <pre><code>${code.trim()}</code></pre>
+      </div>
+    `;
+  });
+
   // Headers
   formatted = formatted.replace(/^### (.*$)/gim, '<h3 style="margin: 0.75rem 0 0.35rem 0; font-size: 1rem; color: var(--accent-cyan);">$1</h3>');
   formatted = formatted.replace(/^## (.*$)/gim, '<h2 style="margin: 1rem 0 0.5rem 0; font-size: 1.1rem;">$1</h2>');
@@ -574,7 +920,7 @@ function formatMarkdown(text) {
   formatted = formatted.replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>');
   formatted = formatted.replace(/\*(.*?)\*/gim, '<em>$1</em>');
 
-  // Links
+  // Markdown Links
   formatted = formatted.replace(/\[(.*?)\]\((.*?)\)/gim, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color: var(--accent-cyan); text-decoration: underline;">$1</a>');
 
   // Inline code & blockquotes

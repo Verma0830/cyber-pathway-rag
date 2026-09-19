@@ -3,34 +3,75 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CyberPathway RAG - Zero-Cost Cybersecurity Learning & Career Advisor</title>
+  <title>CyberPathway RAG - Cybersecurity Learning & Career Advisor</title>
   <link rel="stylesheet" href="/styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
+  <!-- Slide-out Navigation Drawer -->
+  <div class="drawer-overlay" id="drawer-overlay"></div>
+  <aside class="nav-drawer" id="nav-drawer">
+    <div class="drawer-header">
+      <div class="drawer-brand">
+        <span class="drawer-shield">🛡️</span>
+        <span class="drawer-title">CyberPathway</span>
+      </div>
+      <button class="btn-close-drawer" id="btn-close-drawer" aria-label="Close menu">&times;</button>
+    </div>
+    <div class="drawer-nav">
+      <button class="drawer-item active" data-tab="tab-roadmap">
+        <span class="drawer-icon">🧭</span>
+        <span>Career Roadmap</span>
+      </button>
+      <button class="drawer-item" data-tab="tab-chat">
+        <span class="drawer-icon">💬</span>
+        <span>RAG Advisor Chat</span>
+      </button>
+      <button class="drawer-item" data-tab="tab-catalog">
+        <span class="drawer-icon">📚</span>
+        <span>Resource Explorer</span>
+      </button>
+      <button class="drawer-item" data-tab="tab-admin">
+        <span class="drawer-icon">⚙️</span>
+        <span>Admin & Health</span>
+      </button>
+    </div>
+    <div class="drawer-footer">
+      <div class="drawer-status-badge">
+        <span class="status-dot"></span> System Online
+      </div>
+      <p class="drawer-footer-text">Verified Cybersecurity Knowledge Base</p>
+    </div>
+  </aside>
+
   <div class="app-container">
-    <!-- Header -->
+    <!-- Clean Minimalist Header -->
     <header class="app-header">
       <div class="header-content">
-        <div class="brand">
-          <span class="shield-icon">🛡️</span>
-          <div>
-            <h1>CyberPathway <span class="badge-rag">RAG</span></h1>
-            <p class="tagline">Production-Quality Cybersecurity Career Guidance & 5-Stage Verified Roadmaps</p>
+        <div class="header-left">
+          <button class="hamburger-btn" id="btn-hamburger" aria-label="Toggle navigation menu" title="Open Navigation Menu">
+            <span class="bar"></span>
+            <span class="bar"></span>
+            <span class="bar"></span>
+          </button>
+          <div class="brand">
+            <span class="shield-icon">🛡️</span>
+            <div>
+              <h1>CyberPathway <span class="badge-rag">RAG</span></h1>
+              <p class="tagline">Personalized Cybersecurity Guidance & Verified 5-Stage Roadmaps</p>
+            </div>
           </div>
         </div>
-        <div class="header-badges">
-          <span class="badge badge-zero-cost">💰 $0.00 Zero Cost</span>
-          <span class="badge badge-verified">✓ 100% Free & Legal Links</span>
+        <div class="header-right">
+          <nav class="nav-tabs">
+            <button class="nav-tab active" data-tab="tab-roadmap">🧭 Career Roadmap</button>
+            <button class="nav-tab" data-tab="tab-chat">💬 RAG Advisor Chat</button>
+            <button class="nav-tab" data-tab="tab-catalog">📚 Resource Explorer</button>
+            <button class="nav-tab" data-tab="tab-admin">⚙️ Admin Portal</button>
+          </nav>
         </div>
       </div>
-      <nav class="nav-tabs">
-        <button class="nav-tab active" data-tab="tab-roadmap">🧭 Career Roadmap</button>
-        <button class="nav-tab" data-tab="tab-chat">💬 RAG Advisor Chat</button>
-        <button class="nav-tab" data-tab="tab-catalog">📚 Resource Explorer</button>
-        <button class="nav-tab" data-tab="tab-admin">🛠️ Admin & Link Health</button>
-      </nav>
     </header>
 
     <!-- Main Content Area -->
@@ -40,8 +81,8 @@
         <div class="roadmap-layout">
           <!-- Quiz / Diagnostic Sidebar -->
           <div class="diagnostic-card">
-            <h2>🎯 Career Diagnostic Assessment</h2>
-            <p class="subtext">Answer these key questions to calibrate your personalized 5-stage roadmap.</p>
+            <h2>Career Diagnostic Assessment</h2>
+            <p class="subtext">Answer these calibration questions to construct your personalized 5-stage learning roadmap.</p>
             
             <form id="quiz-form">
               <div class="form-group">
@@ -97,7 +138,7 @@
                 </select>
               </div>
 
-              <button type="submit" class="btn btn-primary" id="btn-diagnose">⚡ Generate 5-Stage Roadmap</button>
+              <button type="submit" class="btn btn-primary" id="btn-diagnose">Generate 5-Stage Roadmap</button>
             </form>
 
             <div id="recommendation-results" class="recommendation-box hidden">
@@ -111,7 +152,7 @@
             <div class="empty-state" id="roadmap-placeholder">
               <div class="empty-icon">🗺️</div>
               <h3>Personalized 5-Stage Cybersecurity Roadmap</h3>
-              <p>Complete the assessment on the left to generate your path: <strong>Foundations ➔ Beginner ➔ Intermediate ➔ Advanced ➔ Expert</strong> with verified free resources and hands-on labs.</p>
+              <p>Complete the assessment on the left to generate your structured path: <strong>Foundations ➔ Beginner ➔ Intermediate ➔ Advanced ➔ Expert</strong> with verified free resources and hands-on labs.</p>
             </div>
             
             <div id="roadmap-content" class="hidden">
@@ -121,13 +162,31 @@
                   <p id="rm-rationale" class="rm-rationale"></p>
                 </div>
                 <div class="rm-stats">
-                  <span class="stat-pill" id="rm-time">⏱️ Estimated Weeks</span>
-                  <span class="stat-pill" id="rm-roles">💼 Target Roles</span>
+                  <span class="stat-pill" id="rm-time">Estimated Weeks</span>
+                  <span class="stat-pill" id="rm-roles">Target Roles</span>
+                </div>
+              </div>
+
+              <!-- Interactive Progress & Action Toolbar -->
+              <div class="roadmap-toolbar">
+                <div class="progress-box">
+                  <div class="progress-label-row">
+                    <span class="progress-title">Study Progress Tracker</span>
+                    <span class="progress-pct" id="rm-progress-percent">0% Completed</span>
+                  </div>
+                  <div class="progress-track">
+                    <div class="progress-fill" id="rm-progress-fill" style="width: 0%"></div>
+                  </div>
+                </div>
+                <div class="roadmap-btn-group">
+                  <button class="btn btn-secondary btn-sm" id="btn-toggle-accordion">Expand / Collapse All</button>
+                  <button class="btn btn-secondary btn-sm" id="btn-export-markdown">Export Markdown</button>
+                  <button class="btn btn-secondary btn-sm" id="btn-print-roadmap">Print / PDF</button>
                 </div>
               </div>
 
               <div class="notice-banner">
-                <span class="info-icon">ℹ️</span>
+                <span class="info-icon">ℹ</span>
                 <span id="rm-notice">Timeframes are estimated ranges based on your study pace, not guarantees. We do not promise employment, certification success, or exact completion times.</span>
               </div>
 
@@ -147,13 +206,21 @@
       <!-- TAB 2: RAG Conversational Chat -->
       <section id="tab-chat" class="tab-pane">
         <div class="chat-layout">
+          <div class="chat-header-bar">
+            <div class="chat-header-title">
+              <span class="status-dot"></span>
+              <span>RAG Assistant & Career Advisor</span>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="btn-clear-chat" title="Clear Conversation">Clear Chat</button>
+          </div>
+
           <div class="chat-messages" id="chat-messages">
             <div class="message message-assistant">
               <div class="msg-avatar">🛡️</div>
               <div class="msg-body">
                 <p>Welcome! I am your <strong>Cybersecurity Career & Learning Assistant</strong>.</p>
                 <p>I explain concepts using grounded evidence, guide your career progression, and recommend verified, 100% free legal educational resources with direct URLs. I never invent links or promise guaranteed outcomes.</p>
-                <p>Try asking questions like:</p>
+                <p>Select a quick prompt or type your question below:</p>
                 <ul class="quick-questions">
                   <li><button class="btn-chip" data-q="What is the OWASP Top 10 and how do I start learning web security?">OWASP Top 10 Basics</button></li>
                   <li><button class="btn-chip" data-q="How do I transition from IT helpdesk to a Tier 1 SOC Analyst?">Helpdesk to SOC Analyst</button></li>
@@ -164,6 +231,9 @@
             </div>
           </div>
 
+          <!-- Floating Scroll-to-Bottom Button -->
+          <button class="btn-scroll-bottom hidden" id="btn-scroll-bottom" aria-label="Scroll to bottom">↓ Jump to Latest</button>
+
           <div class="chat-input-bar">
             <form id="chat-form">
               <div class="input-wrapper">
@@ -171,7 +241,7 @@
                 <button type="submit" class="btn btn-send" id="btn-send">Send ➔</button>
               </div>
               <div class="chat-footer-info">
-                <span>🔒 Source Priority: Internal Knowledge Base first. Live Search only when insufficient.</span>
+                <span>Source Priority: Internal Index first. Live Search only when insufficient.</span>
                 <span id="rag-sufficiency-indicator" class="badge-subtle">Internal Index First</span>
               </div>
             </form>
@@ -182,8 +252,18 @@
       <!-- TAB 3: Resource Explorer -->
       <section id="tab-catalog" class="tab-pane">
         <div class="catalog-layout">
+          <!-- Quick Filter Chips -->
+          <div class="quick-filter-chips">
+            <button class="filter-chip active" data-type-filter="">All Resources</button>
+            <button class="filter-chip" data-type-filter="interactive_lab">Interactive Labs</button>
+            <button class="filter-chip" data-type-filter="course">Free Courses</button>
+            <button class="filter-chip" data-type-filter="official_doc">Official Docs</button>
+            <button class="filter-chip" data-type-filter="cheatsheet">Cheat Sheets</button>
+            <button class="filter-chip" data-level-filter="absolute_beginner">Beginner Friendly</button>
+          </div>
+
           <div class="catalog-controls">
-            <input type="text" id="catalog-search" placeholder="Search resources, CVEs, tools, or concepts...">
+            <input type="text" id="catalog-search" placeholder="Search resources, CVEs, tools, or concepts..." autocomplete="off">
             
             <select id="catalog-domain-filter">
               <option value="">All 26 Domains</option>
@@ -218,7 +298,7 @@
       <!-- TAB 4: Admin & Health Portal -->
       <section id="tab-admin" class="tab-pane">
         <div class="admin-layout">
-          <h2>🛠️ Administrator & Link Health Portal</h2>
+          <h2>Administrator & Link Health Portal</h2>
           <p class="subtext">Review live-discovered resources, monitor active HTTP link statuses, and handle learner feedback.</p>
 
           <div class="admin-stat-cards">
@@ -239,7 +319,7 @@
           <div class="admin-sections">
             <!-- Quarantine Queue -->
             <div class="admin-box">
-              <h3>🚨 Source Quarantine Review Queue</h3>
+              <h3>Source Quarantine Review Queue</h3>
               <p class="small-text">Resources discovered via live search awaiting administrator validation before permanent indexing.</p>
               <div id="admin-pending-table" class="admin-table-container"></div>
             </div>
