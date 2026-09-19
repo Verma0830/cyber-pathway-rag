@@ -45,11 +45,13 @@ export async function buildServer(options = {}) {
   const db = new SQLiteStore(dbPath);
   await db.initialize();
 
-  // Auto-seed if database is fresh
-  const existingResources = await db.getAllResources({ limit: 1 });
-  if (existingResources.length === 0) {
-    const pipeline = new IngestionPipeline({ db });
-    await pipeline.ingestBatch(SEED_RESOURCES);
+  // Auto-seed missing seed catalog items
+  const pipeline = new IngestionPipeline({ db });
+  for (const seed of SEED_RESOURCES) {
+    const exists = await db.getResourceById(seed.id);
+    if (!exists) {
+      await pipeline.ingestResource(seed);
+    }
   }
 
   // Core services

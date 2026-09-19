@@ -9,6 +9,7 @@
 import { ILLMProvider } from '../adapters/ILLMProvider.js';
 import { detectPromptInjection, evaluateSafetyIntent, buildSafeEvidenceContext } from '../security/prompt-guard.js';
 import { buildCitations, appendMarkdownCitations } from '../retrieval/citation-builder.js';
+import { extractCoreKeywords } from '../retrieval/query-rewriter.js';
 
 export const RUNTIME_RAG_SYSTEM_PROMPT = `You are a cybersecurity learning, career-guidance, and resource assistant.
 
@@ -179,14 +180,20 @@ export class ConversationalAssistant extends ILLMProvider {
     const citations = buildCitations(evidence);
     const topItem = evidence[0] || {};
     const queryLower = query.toLowerCase().trim();
+    const coreTopic = extractCoreKeywords(query);
+    const coreLower = coreTopic.toLowerCase();
 
-    // Intent detection
+    // Intent & topic detection
     const isGreeting = /^(hi|hello|hey|good\s*(morning|evening|afternoon)|greetings|howdy|yo)\b/i.test(queryLower);
     const isCareer = /(career|transition|pivot|become|switch|start|helpdesk|developer|sysadmin|student|job|roadmap|pathway|salary|hire|hiring)/i.test(queryLower);
-    const isConcept = /(what is|explain|how does|why does|difference between|overview|define|concept|tell me about|understand|meaning)/i.test(queryLower);
     const isLab = /(lab|practice|hands-on|exercise|wargame|tutorial|where can i practice|ctf|challenge)/i.test(queryLower);
     const isTool = /(tool|software|wireshark|nmap|ghidra|burp|metasploit|snort|zeek|download|install|kali)/i.test(queryLower);
     const isHoursOrPace = /(\d+\s*(hours?|hrs?)|weekends?|part\s*time|full\s*time|every\s*day)/i.test(queryLower);
+
+    // Deep topic matchers
+    const isOsi = /\b(osi|osi model|7 layers|open systems interconnection)\b/i.test(queryLower) || /\b(osi|osi model)\b/i.test(coreLower);
+    const isTcp = /\b(tcp|tcp\/ip|handshake|3-way handshake|syn ack)\b/i.test(queryLower) && !isOsi;
+    const isConcept = isOsi || isTcp || /(what is|explain|how does|why does|difference between|overview|define|concept|tell me about|understand|meaning|learn|study|teach me|breakdown|guide to)/i.test(queryLower);
 
     // Multi-turn context check: see what the previous assistant turn asked
     const lastAssistantMsg = (chatHistory || [])
@@ -221,8 +228,63 @@ The secret is pacing yourself: focus first on mastering core computer networking
       } else {
         parts.push(`Planning a direction in cybersecurity is all about aligning what excites you with a structured, step-by-step roadmap. Let's look at your goals and find the right route.`);
       }
+    } else if (isOsi) {
+      parts.push(`The **OSI (Open Systems Interconnection) Model** is the essential 7-layer architectural framework created by the ISO to standardize how computer systems communicate across a network.
+
+For cybersecurity professionals, the OSI model is our primary **mental map for threat modeling, packet analysis, and defense in depth**. Every attack vector and security control lives at a specific layer:
+
+• **Layer 7 — Application (HTTP/HTTPS, DNS, SSH, SMTP, FTP)**
+  *What happens here:* User-facing protocols and web APIs process data.
+  *Security Lens:* Web attacks like SQL Injection, Cross-Site Scripting (XSS), CSRF, and broken authorization.
+  *Defenses:* Web Application Firewalls (WAF), secure input validation, API security gateways.
+
+• **Layer 6 — Presentation (TLS/SSL, SSH encryption, MIME, JSON)**
+  *What happens here:* Data formatting, serialization, compression, and encryption/decryption.
+  *Security Lens:* SSL stripping, cipher downgrades, certificate spoofing.
+  *Defenses:* Strict TLS 1.3 enforcement, HSTS, secure PKI certificate management.
+
+• **Layer 5 — Session (NetBIOS, RPC, SOCKS)**
+  *What happens here:* Establishing, maintaining, and synchronizing connections between applications.
+  *Security Lens:* Session hijacking, token replay attacks, authentication cookie theft.
+  *Defenses:* High-entropy session IDs, short expiration timeouts, mutual TLS.
+
+• **Layer 4 — Transport (TCP, UDP)**
+  *What happens here:* End-to-end packet delivery, multiplexing via port numbers (e.g. 443, 80, 22), and flow control.
+  *Security Lens:* SYN flood DDoS, stealth port scanning (Nmap SYN scan), connection resets.
+  *Defenses:* Stateful inspection firewalls, SYN cookies, connection rate limiting.
+
+• **Layer 3 — Network (IP, ICMP, IPsec, BGP)**
+  *What happens here:* Logical packet routing across interconnected networks via IP addresses.
+  *Security Lens:* IP address spoofing, ICMP ping floods, BGP routing hijacks.
+  *Defenses:* Network firewalls, router Access Control Lists (ACLs), BGP RPKI filtering.
+
+• **Layer 2 — Data Link (Ethernet, Wi-Fi 802.11, Switches, MAC addresses)**
+  *What happens here:* Hop-to-hop frame transfer within the local network segment using physical MAC addresses.
+  *Security Lens:* ARP poisoning/spoofing, MAC flooding, rogue DHCP servers, VLAN hopping.
+  *Defenses:* Dynamic ARP Inspection (DAI), DHCP snooping, 802.1X port security.
+
+• **Layer 1 — Physical (Cables, fiber optics, radio frequencies, network taps)**
+  *What happens here:* Raw bitstream transmission across electrical, optical, or RF physical media.
+  *Security Lens:* Physical wiretapping, rogue hardware implants (e.g. USB Rubber Ducky), Wi-Fi radio jamming.
+  *Defenses:* Physical data center security, port locks, shielded cabling.
+
+💡 **Two popular mnemonics to memorize the stack:**
+• **Top-down (L7 to L1):** *"All People Seem To Need Data Processing"*
+• **Bottom-up (L1 to L7):** *"Please Do Not Throw Sausage Pizza Away"*`);
+    } else if (isTcp) {
+      parts.push(`The **TCP/IP Model** is the 4-layer protocol suite (Network Access, Internet, Transport, Application) that runs the real-world Internet.
+
+At the Transport layer, TCP guarantees reliable, ordered packet delivery through the famous **Three-Way Handshake**:
+1. **SYN (Synchronize):** The client sends a packet with an Initial Sequence Number (ISN) requesting a connection.
+2. **SYN-ACK (Synchronize-Acknowledge):** The server responds confirming the client's request and sends its own sequence number.
+3. **ACK (Acknowledge):** The client acknowledges the server's reply, and the two-way session is established.
+
+**Why Security Analysts Care:**
+• **SYN Flood DDoS:** An attacker fires thousands of spoofed SYN packets without sending the final ACK, filling up the target's connection memory table until legitimate users are locked out.
+• **Stealth Port Scans (Nmap \`-sS\`):** The scanner sends SYN; if it gets SYN-ACK, it knows the port is open and immediately sends RST (Reset) instead of ACK to avoid establishing a full connection logged by applications.`);
     } else if (isConcept) {
-      parts.push(`Let's unpack this! Understanding **${topItem.title || 'this concept'}** is essential for any modern security professional.
+      const topicTitle = coreTopic ? coreTopic : (topItem.title || 'this security topic');
+      parts.push(`Let's unpack **${topicTitle}**! Understanding this is essential for building practical cybersecurity skills.
 
 ${topItem.contentSummary || 'This is a foundational concept used across defensive operations, threat analysis, and secure engineering.'}`);
       if (topItem.conceptsCovered && topItem.conceptsCovered.length > 0) {
@@ -235,7 +297,8 @@ ${topItem.contentSummary || 'Hands-on practice is the cornerstone of technical c
 
 *A quick mentor tip:* Always practice within dedicated virtual machines (like VirtualBox or VMware) or browser sandboxes, and never run scanning or testing tools against any systems without explicit written permission.`);
     } else {
-      parts.push(`Here is a grounded, practical breakdown on **${topItem.title || query}** based on verified security authorities:
+      const topicTitle = coreTopic || query;
+      parts.push(`Here is a grounded, practical breakdown on **${topicTitle}** based on verified security authorities:
 
 ${topItem.contentSummary || 'This is an authoritative area of security practice and research.'}`);
     }
@@ -248,7 +311,15 @@ ${topItem.contentSummary || 'This is an authoritative area of security practice 
       parts.push(`To help you take action right away, here are the best verified, 100% free learning resources from our database:`);
     }
 
-    const displayResources = evidence.slice(0, 3);
+    // Filter out low-relevance background items if high-relevance matches exist
+    const relevantEvidence = evidence.filter(r => {
+      if (!coreLower || coreLower.length < 3) return true;
+      const text = `${r.title} ${r.contentSummary || ''} ${(r.conceptsCovered || []).join(' ')} ${(r.taxonomy?.topics || []).join(' ')}`.toLowerCase();
+      if (coreLower.includes(' ') && text.includes(coreLower)) return true;
+      const coreTokens = coreLower.split(/\s+/).filter(t => t.length > 2);
+      return coreTokens.length > 0 && coreTokens.every(t => new RegExp('(^|[^a-z0-9])' + t + '([^a-z0-9]|$)', 'i').test(text));
+    });
+    const displayResources = (relevantEvidence.length > 0 ? relevantEvidence : evidence).slice(0, 3);
     for (const res of displayResources) {
       const provTag = res.provenance?.origin === 'live_search' ? '`[Live search]`' : '`[Indexed]`';
       const provider = res.provider?.name || 'Verified Authority';
@@ -264,13 +335,17 @@ ${topItem.contentSummary || 'This is an authoritative area of security practice 
 
     // 4. Concrete Immediate Next Action
     const primary = displayResources[0] || topItem;
-    parts.push(`### Concrete Next Action\nOpen **[${primary.title}](${primary.canonicalUrl})** right now, spend 15–20 minutes reading the introductory section, and jot down 3 key takeaways in your personal study notes. Taking that immediate 15-minute action turns curiosity into real competence!`);
+    parts.push(`### Concrete Next Action\nOpen **[${primary.title}](${primary.canonicalUrl})** right now, spend 15–20 minutes reviewing the core material, and jot down 3 key takeaways in your personal study notes. Taking that immediate 15-minute action turns curiosity into real competence!`);
 
     // 5. Interactive Follow-up Question
     if (isGreeting) {
       parts.push(`💬 **Tell me:** What's your current technical background, and what area of security interests you most?`);
     } else if (isCareer) {
       parts.push(`💬 **Quick question for you:** How many hours per week do you realistically have available to study, and are you leaning more toward **breaking systems (Offensive / Red Team)** or **defending networks (SOC / Blue Team)**?`);
+    } else if (isOsi) {
+      parts.push(`💬 **Quick question:** Would you like to see how packet analysis tools like Wireshark inspect these layers, or explore how specific attacks (like ARP spoofing at Layer 2 vs SQL injection at Layer 7) work in practice?`);
+    } else if (isTcp) {
+      parts.push(`💬 **Quick question:** Would you like to see how to capture a TCP 3-way handshake in Wireshark, or explore how UDP differs for DNS and streaming?`);
     } else if (isLab || isTool) {
       parts.push(`💬 **Quick check:** Do you already have a Linux environment (such as Ubuntu, Kali, or WSL) set up, or would you prefer browser-based sandbox labs with zero installation to start?`);
     } else {

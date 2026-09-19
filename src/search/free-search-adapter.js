@@ -5,6 +5,7 @@
  */
 import { ISearchProvider } from '../adapters/ISearchProvider.js';
 import { validateSafeUrl } from '../security/ssrf-guard.js';
+import { extractCoreKeywords } from '../retrieval/query-rewriter.js';
 
 export const TRUSTED_AUTHORITY_DOMAINS = [
   'owasp.org',
@@ -27,10 +28,15 @@ export const TRUSTED_AUTHORITY_DOMAINS = [
   'professormesser.com',
   'letsdefend.io',
   'checkov.io',
-  'openpolicyagent.org'
+  'openpolicyagent.org',
+  'cloudflare.com',
+  'wireshark.org',
+  'nmap.org'
 ];
 
 export const AUTHORITY_TOOLS_DIRECTORY = [
+  { name: 'OSI Model Guide', keywords: ['osi', 'osi model', '7 layers', 'open systems interconnection'], title: 'Cloudflare Learning Center: What is the OSI Model? (7 Layers Explained)', url: 'https://www.cloudflare.com/learning/ddos/glossary/open-systems-interconnection-model-osi/', snippet: 'Comprehensive architectural guide explaining the 7 layers of the OSI model, data encapsulation, protocols at each layer, and how security mechanisms operate.' },
+  { name: 'Network Fundamentals', keywords: ['network+', 'networking fundamentals', 'tcp handshake', 'tcp ip'], title: 'Professor Messer CompTIA Network+ Training Course (Free Video Series)', url: 'https://www.professormesser.com/network-plus/n10-008/n10-008-training-course/', snippet: 'Full free modular training course covering computer networking fundamentals, the OSI model, TCP/IP, and packet analysis.' },
   { name: 'Wireshark', keywords: ['wireshark', 'packet', 'pcap', 'sniffing', 'network traffic'], title: 'Wireshark Official User Guide & Packet Analysis Documentation', url: 'https://www.wireshark.org/docs/wsug_html_chunked/', snippet: 'Comprehensive official guide to packet inspection, display filters, and protocol dissection with Wireshark.' },
   { name: 'Nmap', keywords: ['nmap', 'port scanning', 'network discovery', 'syn scan'], title: 'Nmap Reference Guide & Official Network Exploration Manual', url: 'https://nmap.org/book/man.html', snippet: 'Official reference documentation on port scanning techniques, OS detection, and NSE script engine.' },
   { name: 'Ghidra', keywords: ['ghidra', 'reverse engineering', 'decompiler', 'disassembly'], title: 'NSA Ghidra Software Reverse Engineering Framework', url: 'https://ghidra-sre.org/', snippet: 'Free, open-source software reverse engineering suite developed by the National Security Agency with decompilation.' },
@@ -72,11 +78,13 @@ export class FreeWebSearchAdapter extends ISearchProvider {
     if (!query || query.trim().length === 0) return [];
 
     const results = [];
-    const queryLower = query.toLowerCase();
+    const coreQuery = extractCoreKeywords(query);
+    const queryLower = coreQuery.toLowerCase();
+    const rawLower = query.toLowerCase();
 
     // 1. Check Authority Tools Directory for high-relevance direct matches
     for (const tool of AUTHORITY_TOOLS_DIRECTORY) {
-      const matchesKeyword = tool.keywords.some(k => queryLower.includes(k));
+      const matchesKeyword = tool.keywords.some(k => queryLower.includes(k) || rawLower.includes(k));
       if (matchesKeyword) {
         results.push({
           title: tool.title,
@@ -94,7 +102,7 @@ export class FreeWebSearchAdapter extends ISearchProvider {
 
     // 2. Try DuckDuckGo HTML Search
     try {
-      const encodedQuery = encodeURIComponent(query + ' cybersecurity documentation free');
+      const encodedQuery = encodeURIComponent(coreQuery + ' cybersecurity documentation free');
       const endpoint = `https://html.duckduckgo.com/html/?q=${encodedQuery}`;
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 4000);
@@ -130,7 +138,7 @@ export class FreeWebSearchAdapter extends ISearchProvider {
           // Avoid duplicate URLs
           if (results.some(r => r.url === rawUrl)) continue;
 
-          const title = titleMatches[i] ? titleMatches[i][1].replace(/<[^>]+>/g, '').trim() : `Resource: ${query}`;
+          const title = titleMatches[i] ? titleMatches[i][1].replace(/<[^>]+>/g, '').trim() : `Resource: ${coreQuery}`;
           const snippet = snippetMatches[i] ? snippetMatches[i][1].replace(/<[^>]+>/g, '').trim() : 'Verified live cybersecurity resource.';
 
           results.push({
@@ -149,7 +157,7 @@ export class FreeWebSearchAdapter extends ISearchProvider {
     // 3. Fallback: Wikipedia Technical OpenSearch API (Never blocked, fast, highly authoritative)
     if (results.length < limit) {
       try {
-        const wikiEndpoint = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=${limit}&namespace=0&format=json`;
+        const wikiEndpoint = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(coreQuery)}&limit=${limit}&namespace=0&format=json`;
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3500);
 

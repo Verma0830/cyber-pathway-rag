@@ -150,4 +150,32 @@ test('Conversational Assistant Synthesis & Safety', async (t) => {
     assert.ok(response.text.includes('could not locate a verified, freely accessible, and authoritative resource'));
     assert.equal(response.citations.length, 0);
   });
+
+  await t.test('explains OSI model with 7 layers, mnemonics, and grounds in networking evidence', async () => {
+    const evidence = [
+      {
+        id: 'seed-fund-net-001',
+        title: 'Professor Messer CompTIA Network+ (OSI Model & TCP/IP)',
+        canonicalUrl: 'https://www.professormesser.com/network-plus/n10-008/n10-008-training-course/',
+        contentSummary: 'Complete free video course covering computer networking foundations and the 7-layer OSI model.',
+        conceptsCovered: ['OSI 7 Layers', 'Packet Encapsulation', 'TCP vs UDP'],
+        difficultyLevel: 'beginner',
+        provider: { name: 'Professor Messer' },
+        provenance: { origin: 'internal_index' }
+      }
+    ];
+
+    const response = await assistant.synthesizeEvidence({
+      query: 'i want to learn more about osi model',
+      evidence
+    });
+
+    assert.equal(response.blocked, false);
+    assert.ok(response.text.includes('OSI (Open Systems Interconnection) Model'));
+    assert.ok(response.text.includes('Layer 7 — Application'));
+    assert.ok(response.text.includes('Layer 1 — Physical'));
+    assert.ok(response.text.includes('Please Do Not Throw Sausage Pizza Away'));
+    assert.ok(response.text.includes('https://www.professormesser.com/network-plus/n10-008/n10-008-training-course/'));
+    assert.ok(response.text.includes('Concrete Next Action'));
+  });
 });

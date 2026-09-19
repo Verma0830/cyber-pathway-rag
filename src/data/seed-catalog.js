@@ -65,6 +65,46 @@ export const SEED_RESOURCES = [
     audience: "student",
     contentSummary: "Official Wireshark archive of network traffic packet captures demonstrating key protocols and anomalous behavior."
   },
+  {
+    id: "seed-fund-net-001",
+    title: "Professor Messer CompTIA Network+ (OSI Model & TCP/IP)",
+    canonicalUrl: "https://www.professormesser.com/network-plus/n10-008/n10-008-training-course/",
+    resourceType: "course",
+    provider: { name: "Professor Messer", type: "community_educator", reputationScore: 0.97 },
+    taxonomy: { domainId: "fundamentals", subdomainId: "networking_protocols", topics: ["osi_model", "tcp_ip_handshake", "packet_analysis", "dns_dhcp"] },
+    difficultyLevel: "beginner",
+    prerequisites: [],
+    conceptsCovered: ["OSI 7 Layers", "Packet Encapsulation", "TCP vs UDP", "MAC vs IP Addressing", "Common Ports & Protocols"],
+    language: "en",
+    estimatedTimeMinutes: 300,
+    freeAccessStatus: "always_free_open_access",
+    license: "Free Online Training",
+    credibility: { score: 0.97, justification: "Globally acclaimed free computer networking course covering the OSI model and protocols" },
+    provenance: { origin: "internal_index", reviewStatus: "approved", approvedBy: "automated_ruleset" },
+    safetyClassification: "safe_educational",
+    audience: "student",
+    contentSummary: "Complete free video course covering computer networking foundations, the 7-layer OSI model, packet encapsulation, and TCP/IP protocol analysis."
+  },
+  {
+    id: "seed-fund-net-002",
+    title: "Cloudflare Learning Center: What is the OSI Model?",
+    canonicalUrl: "https://www.cloudflare.com/learning/ddos/glossary/open-systems-interconnection-model-osi/",
+    resourceType: "official_doc",
+    provider: { name: "Cloudflare", type: "vendor_doc", reputationScore: 0.96 },
+    taxonomy: { domainId: "fundamentals", subdomainId: "networking_protocols", topics: ["osi_model", "layer_7_attacks", "packet_analysis"] },
+    difficultyLevel: "beginner",
+    prerequisites: [],
+    conceptsCovered: ["7 Layers of OSI", "Application Layer Attacks", "Network Layer Routing", "Transport Layer Handshake"],
+    language: "en",
+    estimatedTimeMinutes: 45,
+    freeAccessStatus: "always_free_open_access",
+    license: "Educational Reference",
+    credibility: { score: 0.96, justification: "Authoritative, crystal-clear reference architecture explaining the 7 OSI layers and layer-specific security" },
+    provenance: { origin: "internal_index", reviewStatus: "approved", approvedBy: "automated_ruleset" },
+    safetyClassification: "safe_educational",
+    audience: "general_learner",
+    contentSummary: "Clear, visual architectural breakdown of the 7-layer OSI model, explaining how each layer operates and how attacks target specific layers."
+  },
 
   // 2. Security Operations & SOC
   {

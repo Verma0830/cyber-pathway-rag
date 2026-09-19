@@ -4,7 +4,7 @@
  * Sufficiency Evaluation, and Automated Live Search Fallback.
  */
 import { LocalSemanticEmbeddingProvider } from './local-embedding.js';
-import { rewriteQuery } from './query-rewriter.js';
+import { rewriteQuery, extractCoreKeywords } from './query-rewriter.js';
 import { SufficiencyEvaluator } from './sufficiency-evaluator.js';
 import { FreeWebSearchAdapter } from '../search/free-search-adapter.js';
 import { buildCitations } from './citation-builder.js';
@@ -42,7 +42,8 @@ export class HybridRetriever {
    *   sourceOrigin: 'internal_index' | 'live_search' | 'hybrid'
    * }>}
    */
-  async retrieve({ query, filter = {}, topK = 5 }) {
+  async retrieve(params) {
+    const { query, filter = {}, topK = 5 } = typeof params === 'string' ? { query: params } : (params || {});
     const { expandedQuery, requiresRecency } = rewriteQuery(query);
 
     // 1. Fetch all candidate active resources matching metadata filters
@@ -65,19 +66,36 @@ export class HybridRetriever {
     }
 
     // 2. Lexical / Keyword Scoring
-    const queryTokens = expandedQuery.toLowerCase().split(/\s+/).filter(t => t.length > 2);
+    const conversationalStopwords = new Set([
+      'want', 'learn', 'more', 'about', 'need', 'like', 'explain', 'tell', 'give',
+      'help', 'with', 'from', 'into', 'what', 'where', 'which', 'when', 'does',
+      'doing', 'have', 'been', 'would', 'could', 'should', 'please', 'thanks',
+      'thank', 'can', 'you', 'the', 'and', 'for', 'all', 'any', 'how'
+    ]);
+    const coreTopic = extractCoreKeywords(query).toLowerCase().trim();
+    const queryTokens = expandedQuery.toLowerCase().split(/\s+/)
+      .map(t => t.replace(/[^\w]/g, ''))
+      .filter(t => t.length > 2 && !conversationalStopwords.has(t));
+
     const lexicalScores = new Map();
 
     for (const res of allResources) {
       const searchCorpus = `${res.title} ${res.taxonomy?.domainId} ${(res.taxonomy?.topics || []).join(' ')} ${(res.conceptsCovered || []).join(' ')} ${res.contentSummary || ''}`.toLowerCase();
       let matchCount = 0;
 
+      // Exact phrase bonus for core topic (e.g. "osi model")
+      if (coreTopic.length > 2 && (res.title.toLowerCase().includes(coreTopic) || searchCorpus.includes(coreTopic))) {
+        matchCount += res.title.toLowerCase().includes(coreTopic) ? 10 : 5;
+      }
+
       for (const token of queryTokens) {
-        if (searchCorpus.includes(token)) {
+        // Use word boundary to avoid substrings like 'osi' matching 'repository'
+        const wordRegex = new RegExp('(^|[^a-z0-9])' + token + '([^a-z0-9]|$)', 'i');
+        if (wordRegex.test(searchCorpus)) {
           // Boost matches in title and topics
-          const inTitle = res.title.toLowerCase().includes(token);
-          const inTopics = (res.taxonomy?.topics || []).some(t => t.toLowerCase().includes(token));
-          matchCount += inTitle ? 3 : (inTopics ? 2 : 1);
+          const inTitle = wordRegex.test(res.title);
+          const inTopics = (res.taxonomy?.topics || []).some(t => wordRegex.test(t));
+          matchCount += inTitle ? 4 : (inTopics ? 3 : 1);
         }
       }
 
@@ -135,12 +153,26 @@ export class HybridRetriever {
       })
       .filter(Boolean);
 
-    // 5. Sufficiency Check
-    const sufficiency = this.sufficiencyEvaluator.evaluate({
+    // 5. Sufficiency Check (Ensure top match has keyword overlap or high vector confidence)
+    const topCandidate = scoredResults[0];
+    const topHasLexicalMatch = topCandidate && (lexicalScores.get(topCandidate.id) || 0) > 0;
+    const isWeakSemanticOnly = !topHasLexicalMatch && (topCandidate?.vectorSimilarity || 0) < 0.40;
+
+    let sufficiency = this.sufficiencyEvaluator.evaluate({
       query,
       retrievedItems: scoredResults,
       requiresRecency
     });
+
+    if (isWeakSemanticOnly && !requiresRecency) {
+      sufficiency = {
+        isSufficient: false,
+        maxScore: topCandidate?.score || 0,
+        validCount: 0,
+        triggerLiveSearch: true,
+        reason: 'No lexical matches found in internal index; semantic similarity below confidence threshold.'
+      };
+    }
 
     // 6. If Insufficient: Trigger Live Search Fallback
     if (!sufficiency.isSufficient && sufficiency.triggerLiveSearch) {
@@ -168,12 +200,15 @@ export class HybridRetriever {
           safetyClassification: 'safe_educational'
         }));
 
-        const merged = [...scoredResults.slice(0, 2), ...liveResources].slice(0, topK);
+        // Prioritize live verified resources and only retain internal items with actual keyword overlap
+        const relevantInternal = scoredResults.filter(r => (lexicalScores.get(r.id) || 0) > 0);
+        const merged = [...liveResources, ...relevantInternal].slice(0, topK);
+
         return {
           results: merged,
           citations: buildCitations(merged),
           sufficiency,
-          sourceOrigin: scoredResults.length > 0 ? 'hybrid' : 'live_search'
+          sourceOrigin: relevantInternal.length > 0 ? 'hybrid' : 'live_search'
         };
       }
     }

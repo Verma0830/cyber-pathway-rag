@@ -24,7 +24,17 @@ const ACRONYM_EXPANSIONS = {
   'iot': 'internet of things firmware embedded',
   'can': 'controller area network automotive car bus',
   'llm': 'large language model prompt injection ai security',
-  'grc': 'governance risk compliance nist csf iso 27001'
+  'grc': 'governance risk compliance nist csf iso 27001',
+  'osi': 'osi model 7 layers open systems interconnection networking',
+  'tcp': 'transmission control protocol tcp ip handshake',
+  'udp': 'user datagram protocol connectionless transport',
+  'dns': 'domain name system name resolution',
+  'arp': 'address resolution protocol mac ip',
+  'dhcp': 'dynamic host configuration protocol ip allocation',
+  'vpn': 'virtual private network ipsec wireguard',
+  'ids': 'intrusion detection system snort suricata zeek',
+  'ips': 'intrusion prevention system snort suricata',
+  'waf': 'web application firewall modsecurity'
 };
 
 const RECENCY_KEYWORDS = [
@@ -83,4 +93,21 @@ export function rewriteQuery(rawQuery) {
     requiresRecency,
     inferredDomains: []
   };
+}
+
+/**
+ * Strips conversational prefixes/stopwords to isolate the core technical topic.
+ * e.g. "i want to learn more about osi model" -> "osi model"
+ * e.g. "can you explain how sql injection works" -> "sql injection"
+ * @param {string} query
+ * @returns {string}
+ */
+export function extractCoreKeywords(query) {
+  if (!query || typeof query !== 'string') return '';
+  const cleaned = query
+    .replace(/^(i\s+(want|need|would\s+like)\s+to\s+(learn|know|understand|read|study)(\s+more)?\s+(about)?|can\s+you\s+(please\s+)?(explain|tell\s+me\s+about|teach\s+me|help\s+me\s+with)|what\s+is(\s+the)?|how\s+does(\s+the)?|how\s+do\s+i|where\s+can\s+i\s+(find|learn|practice)|tell\s+me\s+about|give\s+me\s+an\s+overview\s+of|explain)\s+/i, '')
+    .replace(/(\s+(please|help|thanks|thank\s+you|for\s+beginners|in\s+detail|step\s+by\s+step))+$/i, '')
+    .trim();
+
+  return cleaned.length > 0 ? cleaned : query.trim();
 }
