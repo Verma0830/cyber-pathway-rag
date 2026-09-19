@@ -1,0 +1,36 @@
+{
+  "name": "cyber-pathway-rag",
+  "version": "1.0.0",
+  "description": "Zero-Cost Production-Grade Cybersecurity Learning and Career-Guidance RAG Application",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node --experimental-sqlite src/server.js",
+    "dev": "node --experimental-sqlite --watch src/server.js",
+    "test": "node --test test/**/*.test.js",
+    "ingest": "node --experimental-sqlite src/scripts/ingest.js",
+    "eval": "node --experimental-sqlite src/scripts/evaluate.js",
+    "link-check": "node --experimental-sqlite src/scripts/link-health.js"
+  },
+  "keywords": [
+    "cybersecurity",
+    "rag",
+    "career-guidance",
+    "roadmap",
+    "vector-search",
+    "zero-cost"
+  ],
+  "author": "CyberPathway Team",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.1.2",
+    "@fastify/cors": "^11.3.0",
+    "@fastify/helmet": "^13.1.1",
+    "@fastify/rate-limit": "^11.2.0",
+    "@fastify/static": "^10.1.4",
+    "fastify": "^5.12.5"
+  }
+}

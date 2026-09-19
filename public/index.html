@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CyberPathway RAG - Zero-Cost Cybersecurity Learning & Career Advisor</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-content">
+        <div class="brand">
+          <span class="shield-icon">🛡️</span>
+          <div>
+            <h1>CyberPathway <span class="badge-rag">RAG</span></h1>
+            <p class="tagline">Production-Quality Cybersecurity Career Guidance & 5-Stage Verified Roadmaps</p>
+          </div>
+        </div>
+        <div class="header-badges">
+          <span class="badge badge-zero-cost">💰 $0.00 Zero Cost</span>
+          <span class="badge badge-verified">✓ 100% Free & Legal Links</span>
+        </div>
+      </div>
+      <nav class="nav-tabs">
+        <button class="nav-tab active" data-tab="tab-roadmap">🧭 Career Roadmap</button>
+        <button class="nav-tab" data-tab="tab-chat">💬 RAG Advisor Chat</button>
+        <button class="nav-tab" data-tab="tab-catalog">📚 Resource Explorer</button>
+        <button class="nav-tab" data-tab="tab-admin">🛠️ Admin & Link Health</button>
+      </nav>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- TAB 1: Career Diagnostic & Roadmap Visualizer -->
+      <section id="tab-roadmap" class="tab-pane active">
+        <div class="roadmap-layout">
+          <!-- Quiz / Diagnostic Sidebar -->
+          <div class="diagnostic-card">
+            <h2>🎯 Career Diagnostic Assessment</h2>
+            <p class="subtext">Answer these key questions to calibrate your personalized 5-stage roadmap.</p>
+            
+            <form id="quiz-form">
+              <div class="form-group">
+                <label for="quiz-bg">1. Current Technical Background & Experience:</label>
+                <select id="quiz-bg" required>
+                  <option value="non_tech">Complete Beginner (No IT or programming background)</option>
+                  <option value="it_support">IT Support / Helpdesk / Sysadmin</option>
+                  <option value="software_dev">Software Developer / Programmer</option>
+                  <option value="networking">Network Engineer / Systems Admin</option>
+                  <option value="cs_student">Computer Science / IT Student</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="quiz-interest">2. Primary Area of Interest / Passions:</label>
+                <select id="quiz-interest" required>
+                  <option value="breaking">Offensive Security & Ethical Hacking (Breaking)</option>
+                  <option value="defending">SOC Analysis & Blue Teaming (Defending)</option>
+                  <option value="hunting">Threat Intelligence & Threat Hunting</option>
+                  <option value="building">Cloud, Containers & DevSecOps Hardening</option>
+                  <option value="reverse_eng">Malware Analysis & Reverse Engineering</option>
+                  <option value="strategy_compliance">Governance, Risk & Compliance (GRC)</option>
+                  <option value="hardware_industrial">IoT, Automotive & Industrial OT/ICS</option>
+                  <option value="emerging_ai">AI, LLM Security & Web3</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="quiz-hours">3. Dedicated Study Time:</label>
+                <select id="quiz-hours">
+                  <option value="casual">3 - 5 hrs/week (Steady part-time)</option>
+                  <option value="moderate" selected>8 - 15 hrs/week (Recommended)</option>
+                  <option value="intensive">20 - 30+ hrs/week (Accelerated)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="quiz-timeline">4. Target Timeline:</label>
+                <select id="quiz-timeline">
+                  <option value="short">3 - 6 Months (Sprint)</option>
+                  <option value="medium" selected>6 - 12 Months (Comprehensive)</option>
+                  <option value="long">12+ Months (Deep Mastery)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="quiz-prereqs">5. Prerequisites Already Completed:</label>
+                <select id="quiz-prereqs">
+                  <option value="none">None yet (Starting from zero)</option>
+                  <option value="linux_basic">Basic Linux CLI navigation</option>
+                  <option value="networking_basic">Basic Networking (IP, DNS, TCP)</option>
+                  <option value="multiple">Linux, Networking & Scripting completed</option>
+                </select>
+              </div>
+
+              <button type="submit" class="btn btn-primary" id="btn-diagnose">⚡ Generate 5-Stage Roadmap</button>
+            </form>
+
+            <div id="recommendation-results" class="recommendation-box hidden">
+              <h3>Top Matched Specializations</h3>
+              <div id="recommended-tracks-list"></div>
+            </div>
+          </div>
+
+          <!-- Roadmap Display Area -->
+          <div class="roadmap-display" id="roadmap-display">
+            <div class="empty-state" id="roadmap-placeholder">
+              <div class="empty-icon">🗺️</div>
+              <h3>Personalized 5-Stage Cybersecurity Roadmap</h3>
+              <p>Complete the assessment on the left to generate your path: <strong>Foundations ➔ Beginner ➔ Intermediate ➔ Advanced ➔ Expert</strong> with verified free resources and hands-on labs.</p>
+            </div>
+            
+            <div id="roadmap-content" class="hidden">
+              <div class="roadmap-header">
+                <div>
+                  <h2 id="rm-title">Specialization Roadmap</h2>
+                  <p id="rm-rationale" class="rm-rationale"></p>
+                </div>
+                <div class="rm-stats">
+                  <span class="stat-pill" id="rm-time">⏱️ Estimated Weeks</span>
+                  <span class="stat-pill" id="rm-roles">💼 Target Roles</span>
+                </div>
+              </div>
+
+              <div class="notice-banner">
+                <span class="info-icon">ℹ️</span>
+                <span id="rm-notice">Timeframes are estimated ranges based on your study pace, not guarantees. We do not promise employment, certification success, or exact completion times.</span>
+              </div>
+
+              <!-- 5 Stages Container -->
+              <div class="stages-container" id="stages-container"></div>
+
+              <!-- Concrete Immediate Next Action Callout -->
+              <div class="action-banner" id="rm-immediate-action-box">
+                <div class="action-header">⚡ One Concrete Next Action You Can Begin Right Now</div>
+                <p id="rm-immediate-action-text" class="action-text"></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: RAG Conversational Chat -->
+      <section id="tab-chat" class="tab-pane">
+        <div class="chat-layout">
+          <div class="chat-messages" id="chat-messages">
+            <div class="message message-assistant">
+              <div class="msg-avatar">🛡️</div>
+              <div class="msg-body">
+                <p>Welcome! I am your <strong>Cybersecurity Career & Learning Assistant</strong>.</p>
+                <p>I explain concepts using grounded evidence, guide your career progression, and recommend verified, 100% free legal educational resources with direct URLs. I never invent links or promise guaranteed outcomes.</p>
+                <p>Try asking questions like:</p>
+                <ul class="quick-questions">
+                  <li><button class="btn-chip" data-q="What is the OWASP Top 10 and how do I start learning web security?">OWASP Top 10 Basics</button></li>
+                  <li><button class="btn-chip" data-q="How do I transition from IT helpdesk to a Tier 1 SOC Analyst?">Helpdesk to SOC Analyst</button></li>
+                  <li><button class="btn-chip" data-q="What are the best free labs to practice Linux permissions and SSH?">Free Linux Wargames</button></li>
+                  <li><button class="btn-chip" data-q="Explain Zero Trust Architecture according to NIST SP 800-207">NIST Zero Trust (SP 800-207)</button></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="chat-input-bar">
+            <form id="chat-form">
+              <div class="input-wrapper">
+                <input type="text" id="chat-input" placeholder="Ask any cybersecurity question (concepts, roadmaps, labs, or careers)..." autocomplete="off" required>
+                <button type="submit" class="btn btn-send" id="btn-send">Send ➔</button>
+              </div>
+              <div class="chat-footer-info">
+                <span>🔒 Source Priority: Internal Knowledge Base first. Live Search only when insufficient.</span>
+                <span id="rag-sufficiency-indicator" class="badge-subtle">Internal Index First</span>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: Resource Explorer -->
+      <section id="tab-catalog" class="tab-pane">
+        <div class="catalog-layout">
+          <div class="catalog-controls">
+            <input type="text" id="catalog-search" placeholder="Search resources, CVEs, tools, or concepts...">
+            
+            <select id="catalog-domain-filter">
+              <option value="">All 26 Domains</option>
+            </select>
+
+            <select id="catalog-level-filter">
+              <option value="">All Difficulty Levels</option>
+              <option value="absolute_beginner">Absolute Beginner</option>
+              <option value="beginner">Beginner</option>
+              <option value="intermediate">Intermediate</option>
+              <option value="advanced">Advanced</option>
+            </select>
+
+            <select id="catalog-type-filter">
+              <option value="">All Resource Formats</option>
+              <option value="official_doc">Official Documentation</option>
+              <option value="interactive_lab">Interactive Hands-on Lab</option>
+              <option value="course">Free Course</option>
+              <option value="cheatsheet">Cheat Sheet</option>
+              <option value="specification">Standard / Specification</option>
+            </select>
+          </div>
+
+          <div class="catalog-count-bar">
+            <span>Showing <strong id="catalog-visible-count">0</strong> verified free cybersecurity resources</span>
+          </div>
+
+          <div class="resources-grid" id="resources-grid"></div>
+        </div>
+      </section>
+
+      <!-- TAB 4: Admin & Health Portal -->
+      <section id="tab-admin" class="tab-pane">
+        <div class="admin-layout">
+          <h2>🛠️ Administrator & Link Health Portal</h2>
+          <p class="subtext">Review live-discovered resources, monitor active HTTP link statuses, and handle learner feedback.</p>
+
+          <div class="admin-stat-cards">
+            <div class="stat-card">
+              <div class="stat-num" id="admin-total-res">0</div>
+              <div class="stat-label">Total Indexed Resources</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-num text-warning" id="admin-pending-res">0</div>
+              <div class="stat-label">Quarantine Review Queue</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-num text-danger" id="admin-dead-links">0</div>
+              <div class="stat-label">Dead Links Detected</div>
+            </div>
+          </div>
+
+          <div class="admin-sections">
+            <!-- Quarantine Queue -->
+            <div class="admin-box">
+              <h3>🚨 Source Quarantine Review Queue</h3>
+              <p class="small-text">Resources discovered via live search awaiting administrator validation before permanent indexing.</p>
+              <div id="admin-pending-table" class="admin-table-container"></div>
+            </div>
+
+            <!-- Dead Link Reports & Feedback -->
+            <div class="admin-box">
+              <h3>Broken Link Reports & Learner Feedback</h3>
+              <div id="admin-feedback-table" class="admin-table-container"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Feedback Modal -->
+  <div id="feedback-modal" class="modal hidden">
+    <div class="modal-content">
+      <span class="close-modal" id="btn-close-modal">&times;</span>
+      <h3>Report Resource Issue</h3>
+      <p id="modal-res-title" class="subtext"></p>
+      <form id="feedback-form">
+        <input type="hidden" id="modal-res-id">
+        <div class="form-group">
+          <label for="feedback-issue">Issue Type:</label>
+          <select id="feedback-issue" required>
+            <option value="broken_link">Broken / Dead Link (404/500)</option>
+            <option value="paywall">Encountered Paywall / Registration Fee</option>
+            <option value="outdated">Outdated / Deprecated Content</option>
+            <option value="inappropriate">Safety / Quality Concern</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="feedback-details">Additional Details:</label>
+          <textarea id="feedback-details" rows="3" placeholder="Provide any details..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Submit Report</button>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

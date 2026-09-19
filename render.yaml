@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: cyber-pathway-rag
+    env: node
+    plan: free
+    region: oregon
+    buildCommand: npm install && npm run ingest
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 22
+      - key: LLM_PROVIDER
+        value: local
+      # Optional: Add GEMINI_API_KEY in Render Dashboard if desired
+      # - key: GEMINI_API_KEY
+      #   sync: false
