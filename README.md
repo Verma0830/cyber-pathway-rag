@@ -3,6 +3,8 @@
 > **Production-Quality Cybersecurity Learning and Career-Guidance RAG Platform**
 > Built with **100% Pure JavaScript (ES Modules)** • **$0.00 Zero-Cost Architecture** • **Zero-Hallucination Citations**
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Verma0830/cyber-pathway-rag)
+
 ---
 
 ## 🌟 Key Highlights
@@ -13,7 +15,7 @@
 - **🔍 Hybrid Retrieval with Sufficiency Gate**: Vector cosine similarity + BM25 keyword search combined via Reciprocal Rank Fusion (RRF). Evaluates internal sufficiency threshold ($T_{suff}$) before triggering live search fallback.
 - **🌐 Free Live Search with Authority Whitelist**: Searches open web endpoints safely with SSRF protection, quarantining newly discovered domains into an Admin Review Queue while auto-approving trusted authorities (NIST, OWASP, CISA, SANS, PortSwigger).
 - **🚫 Zero Hallucination Guarantee**: The assistant never invents URLs or authors; all citations are mapped to verified database records with active HTTP status checks and transparent `[Indexed]` or `[Live search]` badges.
-- **🎯 4-Stage Personalized Roadmaps**: Beginner, Intermediate, Advanced, and Expert stages complete with learning objectives, topics, verified free resources, practical labs, and portfolio milestone projects.
+- **🎯 5-Stage Personalized Roadmaps**: Foundations, Beginner, Intermediate, Advanced, and Expert stages complete with learning objectives, topics, verified free resources, practical labs, and concrete immediate next action.
 - **🛡️ Application Security & Dual-Use Guard**: Built-in prompt injection defense, SSRF pre-flight DNS validation, and automated redirection of malicious weaponization requests to authorized legal sandbox labs (TryHackMe, PortSwigger, OWASP Juice Shop).
 
 ---
