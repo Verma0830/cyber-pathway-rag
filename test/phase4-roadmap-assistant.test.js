@@ -237,4 +237,109 @@ test('Conversational Assistant Synthesis & Safety', async (t) => {
     // Ensure no Med. Sentinel medical journal leak
     assert.ok(!response.text.toLowerCase().includes('med. sentinel'));
   });
+
+  await t.test('explains Active Directory & Kerberos with enterprise architecture, Event IDs, and LAPS', async () => {
+    const response = await assistant.synthesizeEvidence({
+      query: 'what is active directory and how does kerberos work?',
+      evidence: []
+    });
+
+    assert.equal(response.blocked, false);
+    assert.ok(response.text.includes('Active Directory'));
+    assert.ok(response.text.includes('Domain Controllers'));
+    assert.ok(response.text.includes('NTDS.dit'));
+    assert.ok(response.text.includes('Event ID 4624'));
+    assert.ok(response.text.includes('LAPS'));
+    assert.ok(response.text.includes('Concrete Next Action'));
+    // Ensure zero car hacking contamination
+    assert.ok(!response.text.toLowerCase().includes('can bus'));
+    assert.ok(!response.text.toLowerCase().includes('opengarages'));
+  });
+
+  await t.test('explains Reverse Shell vs Bind Shell with outbound egress, process lineage, and PTY', async () => {
+    const response = await assistant.synthesizeEvidence({
+      query: 'what is a reverse shell and how is it used in cybersecurity?',
+      evidence: []
+    });
+
+    assert.equal(response.blocked, false);
+    assert.ok(response.text.includes('Reverse Shell'));
+    assert.ok(response.text.includes('outbound'));
+    assert.ok(response.text.includes('firewall'));
+    assert.ok(response.text.includes('Process Lineage'));
+    assert.ok(response.text.includes('https://www.sans.org/blog/reverse-shells/'));
+    assert.ok(response.text.includes('Concrete Next Action'));
+    assert.ok(!response.text.toLowerCase().includes('can bus'));
+    assert.ok(!response.text.toLowerCase().includes('opengarages'));
+  });
+
+  await t.test('explains Firewalls and WAF with stateful inspection, L7 NGFW, and OWASP CRS', async () => {
+    const response = await assistant.synthesizeEvidence({
+      query: 'how do firewalls work and what is a web application firewall?',
+      evidence: []
+    });
+
+    assert.equal(response.blocked, false);
+    assert.ok(response.text.includes('Firewall'));
+    assert.ok(response.text.includes('Stateful Inspection'));
+    assert.ok(response.text.includes('Web Application Firewall'));
+    assert.ok(response.text.includes('Default-Deny'));
+    assert.ok(!response.text.toLowerCase().includes('can bus'));
+  });
+
+  await t.test('explains Splunk SIEM with Universal Forwarders, Indexer buckets, and SPL', async () => {
+    const response = await assistant.synthesizeEvidence({
+      query: 'what is splunk and how do security teams use it in a soc?',
+      evidence: []
+    });
+
+    assert.equal(response.blocked, false);
+    assert.ok(response.text.includes('Splunk'));
+    assert.ok(response.text.includes('Universal Forwarder'));
+    assert.ok(response.text.includes('Indexer'));
+    assert.ok(response.text.includes('Search Processing Language (SPL)'));
+    assert.ok(!response.text.toLowerCase().includes('can bus'));
+  });
+
+  await t.test('explains SQL Injection with In-Band, Blind, and parameterized query defenses', async () => {
+    const response = await assistant.synthesizeEvidence({
+      query: 'what is sql injection and how do we prevent it?',
+      evidence: []
+    });
+
+    assert.equal(response.blocked, false);
+    assert.ok(response.text.includes('SQL Injection'));
+    assert.ok(response.text.includes('UNION-based'));
+    assert.ok(response.text.includes('Parameterized Queries'));
+    assert.ok(response.text.includes('PortSwigger'));
+    assert.ok(!response.text.toLowerCase().includes('can bus'));
+  });
+
+  await t.test('adaptively synthesizes arbitrary/emergent cybersecurity queries with zero contamination', async () => {
+    const response = await assistant.synthesizeEvidence({
+      query: 'what is ebpf security and how do security teams use it?',
+      evidence: [
+        {
+          id: 'live-ebpf-docs',
+          title: 'Linux Kernel Documentation: eBPF',
+          canonicalUrl: 'https://docs.kernel.org/bpf/',
+          contentSummary: 'Official Linux kernel documentation covering extended Berkeley Packet Filter (eBPF) architecture, verifier, and tracing.',
+          conceptsCovered: ['eBPF', 'Linux Kernel', 'Tracing', 'Security Observability'],
+          difficultyLevel: 'advanced',
+          provider: { name: 'Linux Kernel Organization' },
+          provenance: { origin: 'live_search' }
+        }
+      ],
+      sourceOrigin: 'live_search'
+    });
+
+    assert.equal(response.blocked, false);
+    assert.ok(response.text.includes('Ebpf Security'));
+    assert.ok(response.text.includes('Core Technical Mechanics & Architecture'));
+    assert.ok(response.text.includes('Practical Security Operations (Blue & Red Team Use)'));
+    assert.ok(response.text.includes('Recommended Security Controls & Detection Engineering'));
+    assert.ok(response.text.includes('Concrete Next Action'));
+    assert.ok(!response.text.toLowerCase().includes('can bus'));
+    assert.ok(!response.text.toLowerCase().includes('opengarages'));
+  });
 });

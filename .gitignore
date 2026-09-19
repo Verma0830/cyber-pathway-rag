@@ -21,3 +21,6 @@ data/*.sqlite
 *.db-journal
 *.db-wal
 *.db-shm
+
+# Scratch
+scratch/

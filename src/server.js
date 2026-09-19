@@ -158,7 +158,7 @@ export async function buildServer(options = {}) {
 
     return {
       answer: answer.text,
-      citations: retrieval.citations,
+      citations: answer.citations?.length ? answer.citations : retrieval.citations,
       sufficiency: retrieval.sufficiency,
       sourceOrigin: retrieval.sourceOrigin,
       blocked: answer.blocked,

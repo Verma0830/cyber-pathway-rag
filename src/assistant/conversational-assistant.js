@@ -10,6 +10,7 @@ import { ILLMProvider } from '../adapters/ILLMProvider.js';
 import { detectPromptInjection, evaluateSafetyIntent, buildSafeEvidenceContext } from '../security/prompt-guard.js';
 import { buildCitations, appendMarkdownCitations } from '../retrieval/citation-builder.js';
 import { extractCoreKeywords } from '../retrieval/query-rewriter.js';
+import { CyberKnowledgeEngine } from './cyber-knowledge-engine.js';
 
 export const RUNTIME_RAG_SYSTEM_PROMPT = `You are a cybersecurity learning, career-guidance, and resource assistant.
 
@@ -140,13 +141,19 @@ export class ConversationalAssistant extends ILLMProvider {
       };
     }
 
-    // 3. Honesty Check: State clearly when no verified resource exists
+    // 3. Honesty Check / Knowledge Engine Fallback: State clearly when no verified resource exists
+    const coreTopic = extractCoreKeywords(query);
+    const knowledgeTopic = CyberKnowledgeEngine.lookup(coreTopic, query);
     if (!evidence || evidence.length === 0) {
-      return {
-        text: "I searched our internal knowledge base and verified live sources, but could not locate a verified, freely accessible, and authoritative resource that directly answers this inquiry. To guarantee accuracy, I do not invent or reconstruct links. Please try refining your question with specific cybersecurity terms (e.g. 'OWASP Top 10', 'Wireshark', or 'Linux permissions').",
-        citations: [],
-        blocked: false
-      };
+      if (knowledgeTopic?.authorityResource) {
+        evidence = [knowledgeTopic.authorityResource];
+      } else {
+        return {
+          text: "I searched our internal knowledge base and verified live sources, but could not locate a verified, freely accessible, and authoritative resource that directly answers this inquiry. To guarantee accuracy, I do not invent or reconstruct links. Please try refining your question with specific cybersecurity terms (e.g. 'OWASP Top 10', 'Wireshark', or 'Linux permissions').",
+          citations: [],
+          blocked: false
+        };
+      }
     }
 
     // 4. Free Tier Generative AI on the server (Google Gemini or Groq Llama)
@@ -190,21 +197,15 @@ export class ConversationalAssistant extends ILLMProvider {
     const isTool = /(tool|software|wireshark|nmap|ghidra|burp|metasploit|snort|zeek|download|install|kali)/i.test(queryLower);
     const isHoursOrPace = /(\d+\s*(hours?|hrs?)|weekends?|part\s*time|full\s*time|every\s*day)/i.test(queryLower);
 
-    // Deep topic matchers
-    const isOsi = /\b(osi|osi model|7 layers|open systems interconnection)\b/i.test(queryLower) || /\b(osi|osi model)\b/i.test(coreLower);
-    const isTcp = /\b(tcp|tcp\/ip|handshake|3-way handshake|syn ack)\b/i.test(queryLower) && !isOsi;
-    const isDefender = /\b(defender|mde|microsoft defender|windows defender)\b/i.test(queryLower) || /\b(defender|mde|microsoft defender)\b/i.test(coreLower);
-    const isSentinel = /\b(sentinel|microsoft sentinel|azure sentinel|ms sentinel)\b/i.test(queryLower) || /\b(sentinel|microsoft sentinel|ms sentinel)\b/i.test(coreLower);
-    const isConcept = isOsi || isTcp || isDefender || isSentinel || /(what is|explain|how does|why does|difference between|overview|define|concept|tell me about|understand|meaning|learn|study|teach me|breakdown|guide to)/i.test(queryLower);
-
     // Multi-turn context check: see what the previous assistant turn asked
     const lastAssistantMsg = (chatHistory || [])
       .filter(m => m.role === 'assistant')
       .slice(-1)[0]?.text || '';
 
     const parts = [];
+    let knowledgeTopic = null;
 
-    // 1. Natural, Conversational Opening
+    // 1. Natural, Conversational Opening / Expert Cyber Knowledge Synthesis
     if (isGreeting) {
       parts.push(`Hey there! Welcome. I'm your cybersecurity mentor here on CyberPathway. Think of me as an experienced security practitioner in your corner.
 
@@ -230,136 +231,45 @@ The secret is pacing yourself: focus first on mastering core computer networking
       } else {
         parts.push(`Planning a direction in cybersecurity is all about aligning what excites you with a structured, step-by-step roadmap. Let's look at your goals and find the right route.`);
       }
-    } else if (isDefender) {
-      parts.push(`### Microsoft Defender in Cybersecurity: Architecture & Operational Use
-
-**Microsoft Defender for Endpoint (MDE)** is an enterprise-grade endpoint security and Extended Detection and Response (**EDR / XDR**) platform. In enterprise cybersecurity, endpoints (laptops, servers, workstations) are the primary entry point for cyber attacks via phishing, weaponized attachments, credential harvesting, and drive-by downloads.
-
-Here is how Microsoft Defender works and how security practitioners use it daily:
-
-#### 1. Core Architectural Pillars
-• **Endpoint Detection & Response (EDR):** The Defender sensor runs directly inside the Windows, Linux, and macOS OS kernels. It continuously monitors and records process creation trees, network sockets, file modifications, and registry changes, streaming telemetry to the cloud for real-time behavioral correlation.
-• **Next-Generation Antivirus (NGAV):** Cloud-delivered, machine learning-driven protection that detects and quarantines malicious binaries, polymorphic malware, and fileless in-memory attacks before they execute.
-• **Attack Surface Reduction (ASR) Rules:** Hardening controls that stop attacks at the earliest phase—such as blocking Office applications from spawning PowerShell/CMD child processes, blocking credential theft from the Windows Local Security Authority Subsystem Service (\`lsass.exe\`), and preventing untrusted executable files from running off USB drives.
-• **Automated Investigation & Remediation (AIR):** AI-driven playbooks that automatically analyze triggered alerts, inspect affected machines, identify the root cause artifact, terminate running malicious processes, and quarantine files across the fleet.
-
-#### 2. How Security Teams Use It in Cybersecurity
-• **SOC Analysts (Incident Triage):** When an alert triggers, analysts inspect the visual **Execution Tree (Process Timeline)** showing which parent process spawned the command, what network IP the host contacted, and what files were touched.
-• **Incident Responders:** Analysts can **Isolate the Device** from the enterprise network with one click (severing all lateral movement pathways while maintaining a cloud management tunnel), or launch **Live Response** to drop into a remote forensic command line on the host to dump memory, collect triage artifacts, or inspect persistence.
-• **Threat Hunters (Advanced Hunting):** Analysts author **Kusto Query Language (KQL)** queries against months of raw endpoint telemetry across tens of thousands of endpoints to proactively hunt for stealthy Living-off-the-Land Binaries (LOLBins) and advanced adversary persistence.`);
-    } else if (isSentinel) {
-      parts.push(`### Microsoft Sentinel in Cybersecurity: Cloud SIEM & SOAR Architecture
-
-**Microsoft Sentinel** (formerly Azure Sentinel) is a scalable, cloud-native **SIEM** (Security Information and Event Management) and **SOAR** (Security Orchestration, Automation, and Response) solution. 
-
-While tools like Microsoft Defender focus on monitoring individual endpoints, Sentinel acts as the **central nervous system of the Security Operations Center (SOC)**, aggregating, correlating, and alerting across the entire enterprise infrastructure.
-
-#### 1. The 4 Operational Pillars of Sentinel
-• **1. Collect (Data Connectors):** Ingests security logs at cloud scale from every corner of your environment—including Microsoft Defender, Microsoft 365, AWS CloudTrail, Google Cloud Platform, Okta, perimeter firewalls (Palo Alto, Fortinet, Cisco), and on-premises Windows domain controllers.
-• **2. Detect (Analytics Rules & KQL):** Uses **Kusto Query Language (KQL)** and behavioral machine learning to evaluate billions of incoming log events every hour, alerting when behavior matches known adversary tactics mapped to the **MITRE ATT&CK** matrix.
-• **3. Investigate (Incident Workbenches & Graph):** Groups related alerts into unified **Incidents** to eliminate alert fatigue. The visual **Investigation Graph** maps the relationships between compromised user accounts, attacker IP addresses, targeted hosts, and suspicious file hashes.
-• **4. Respond (Automated SOAR Playbooks):** Powered by Azure Logic Apps, Sentinel executes automated playbooks within seconds—such as automatically blocking an attacker's IP on perimeter firewalls, disabling a compromised Active Directory account, or paging the on-call incident response team in Slack/Teams.
-
-#### 2. How Security Professionals Use It
-• **SOC Analysts:** Triage high-priority enterprise incidents, trace lateral movement across hybrid cloud networks, and document incident response timelines.
-• **Detection Engineers:** Author custom detection analytics rules in KQL to hunt for zero-day exploitation patterns and configure automated remediation playbooks.`);
-    } else if (isOsi) {
-      parts.push(`The **OSI (Open Systems Interconnection) Model** is the essential 7-layer architectural framework created by the ISO to standardize how computer systems communicate across a network.
-
-For cybersecurity professionals, the OSI model is our primary **mental map for threat modeling, packet analysis, and defense in depth**. Every attack vector and security control lives at a specific layer:
-
-• **Layer 7 — Application (HTTP/HTTPS, DNS, SSH, SMTP, FTP)**
-  *What happens here:* User-facing protocols and web APIs process data.
-  *Security Lens:* Web attacks like SQL Injection, Cross-Site Scripting (XSS), CSRF, and broken authorization.
-  *Defenses:* Web Application Firewalls (WAF), secure input validation, API security gateways.
-
-• **Layer 6 — Presentation (TLS/SSL, SSH encryption, MIME, JSON)**
-  *What happens here:* Data formatting, serialization, compression, and encryption/decryption.
-  *Security Lens:* SSL stripping, cipher downgrades, certificate spoofing.
-  *Defenses:* Strict TLS 1.3 enforcement, HSTS, secure PKI certificate management.
-
-• **Layer 5 — Session (NetBIOS, RPC, SOCKS)**
-  *What happens here:* Establishing, maintaining, and synchronizing connections between applications.
-  *Security Lens:* Session hijacking, token replay attacks, authentication cookie theft.
-  *Defenses:* High-entropy session IDs, short expiration timeouts, mutual TLS.
-
-• **Layer 4 — Transport (TCP, UDP)**
-  *What happens here:* End-to-end packet delivery, multiplexing via port numbers (e.g. 443, 80, 22), and flow control.
-  *Security Lens:* SYN flood DDoS, stealth port scanning (Nmap SYN scan), connection resets.
-  *Defenses:* Stateful inspection firewalls, SYN cookies, connection rate limiting.
-
-• **Layer 3 — Network (IP, ICMP, IPsec, BGP)**
-  *What happens here:* Logical packet routing across interconnected networks via IP addresses.
-  *Security Lens:* IP address spoofing, ICMP ping floods, BGP routing hijacks.
-  *Defenses:* Network firewalls, router Access Control Lists (ACLs), BGP RPKI filtering.
-
-• **Layer 2 — Data Link (Ethernet, Wi-Fi 802.11, Switches, MAC addresses)**
-  *What happens here:* Hop-to-hop frame transfer within the local network segment using physical MAC addresses.
-  *Security Lens:* ARP poisoning/spoofing, MAC flooding, rogue DHCP servers, VLAN hopping.
-  *Defenses:* Dynamic ARP Inspection (DAI), DHCP snooping, 802.1X port security.
-
-• **Layer 1 — Physical (Cables, fiber optics, radio frequencies, network taps)**
-  *What happens here:* Raw bitstream transmission across electrical, optical, or RF physical media.
-  *Security Lens:* Physical wiretapping, rogue hardware implants (e.g. USB Rubber Ducky), Wi-Fi radio jamming.
-  *Defenses:* Physical data center security, port locks, shielded cabling.
-
-💡 **Two popular mnemonics to memorize the stack:**
-• **Top-down (L7 to L1):** *"All People Seem To Need Data Processing"*
-• **Bottom-up (L1 to L7):** *"Please Do Not Throw Sausage Pizza Away"*`);
-    } else if (isTcp) {
-      parts.push(`The **TCP/IP Model** is the 4-layer protocol suite (Network Access, Internet, Transport, Application) that runs the real-world Internet.
-
-At the Transport layer, TCP guarantees reliable, ordered packet delivery through the famous **Three-Way Handshake**:
-1. **SYN (Synchronize):** The client sends a packet with an Initial Sequence Number (ISN) requesting a connection.
-2. **SYN-ACK (Synchronize-Acknowledge):** The server responds confirming the client's request and sends its own sequence number.
-3. **ACK (Acknowledge):** The client acknowledges the server's reply, and the two-way session is established.
-
-**Why Security Analysts Care:**
-• **SYN Flood DDoS:** An attacker fires thousands of spoofed SYN packets without sending the final ACK, filling up the target's connection memory table until legitimate users are locked out.
-• **Stealth Port Scans (Nmap \`-sS\`):** The scanner sends SYN; if it gets SYN-ACK, it knows the port is open and immediately sends RST (Reset) instead of ACK to avoid establishing a full connection logged by applications.`);
-    } else if (isConcept) {
-      const topicTitle = coreTopic ? coreTopic : (topItem.title || 'this security topic');
-      const topItemText = `${topItem.title || ''} ${topItem.contentSummary || ''} ${(topItem.conceptsCovered || []).join(' ')}`.toLowerCase();
-      const coreTokens = coreLower.split(/\s+/).filter(t => t.length > 2);
-      const isTopItemRelevant = coreTokens.length > 0 && coreTokens.some(t => new RegExp('(^|[^a-z0-9])' + t + '([^a-z0-9]|$)', 'i').test(topItemText));
-
-      if (isTopItemRelevant && topItem.contentSummary) {
-        parts.push(`Let's unpack **${topicTitle}**! Understanding this is essential for building practical cybersecurity skills.
-
-${topItem.contentSummary}`);
-        if (topItem.conceptsCovered && topItem.conceptsCovered.length > 0) {
-          parts.push(`In production environments, security teams pay particular attention to: **${topItem.conceptsCovered.slice(0, 4).join('**, **')}**.`);
-        }
-      } else {
-        parts.push(`### Understanding **${topicTitle}** in Cybersecurity
-
-In cybersecurity practice, **${topicTitle}** is an important area of defensive architecture, threat detection, and risk management.
-
-Security professionals analyze and implement this technology to reduce attack surfaces, detect unauthorized activity, and strengthen overall organizational resilience.`);
-      }
-    } else if (isLab || isTool) {
-      parts.push(`You're asking the right question! In cybersecurity, reading theory only gets you so far; real confidence comes from getting hands-on at the command line in safe, isolated labs.
-
-${topItem.contentSummary || 'Hands-on practice is the cornerstone of technical competence in security operations.'}
-
-*A quick mentor tip:* Always practice within dedicated virtual machines (like VirtualBox or VMware) or browser sandboxes, and never run scanning or testing tools against any systems without explicit written permission.`);
     } else {
-      const topicTitle = coreTopic || query;
-      parts.push(`Here is a grounded, practical breakdown on **${topicTitle}** based on verified security authorities:
-
-${topItem.contentSummary || 'This is an authoritative area of security practice and research.'}`);
+      // Universal Cyber Knowledge Engine lookup
+      knowledgeTopic = CyberKnowledgeEngine.lookup(coreTopic, query);
+      if (knowledgeTopic) {
+        parts.push(CyberKnowledgeEngine.formatKnowledgeEntry(knowledgeTopic));
+      } else {
+        // Universal Adaptive Concept Synthesis for arbitrary cybersecurity queries
+        parts.push(CyberKnowledgeEngine.adaptiveSynthesize(coreTopic, query));
+      }
     }
 
     // 2. Seamless Verified Resource Recommendations
     // Strictly filter out low-relevance background items to avoid showing unrelated resources
     const relevantEvidence = evidence.filter(r => {
-      if (!coreLower || coreLower.length < 3) return true;
+      if (!coreLower || coreLower.length < 3) return false;
       const text = `${r.title} ${r.contentSummary || ''} ${(r.conceptsCovered || []).join(' ')} ${(r.taxonomy?.topics || []).join(' ')}`.toLowerCase();
       if (coreLower.includes(' ') && text.includes(coreLower)) return true;
       const coreTokens = coreLower.split(/\s+/).filter(t => t.length > 2);
       return coreTokens.length > 0 && coreTokens.some(t => new RegExp('(^|[^a-z0-9])' + t + '([^a-z0-9]|$)', 'i').test(text));
     });
-    const displayResources = (relevantEvidence.length > 0 ? relevantEvidence : (topItem.score > 0.45 ? evidence.slice(0, 2) : [])).slice(0, 3);
+
+    let displayResources = relevantEvidence.slice(0, 3);
+    if (displayResources.length === 0) {
+      if (knowledgeTopic?.authorityResource) {
+        displayResources = [knowledgeTopic.authorityResource];
+        // Ensure citation is present for verified authority resource
+        if (!citations.some(c => c.canonicalUrl === knowledgeTopic.authorityResource.canonicalUrl)) {
+          citations.unshift({
+            id: knowledgeTopic.authorityResource.id || 'auth-resource',
+            title: knowledgeTopic.authorityResource.title,
+            canonicalUrl: knowledgeTopic.authorityResource.canonicalUrl,
+            provenance: 'internal_index',
+            domainId: 'cybersecurity'
+          });
+        }
+      } else if (sourceOrigin === 'live_search') {
+        displayResources = evidence.slice(0, 2);
+      }
+    }
 
     if (displayResources.length > 0) {
       const isLive = sourceOrigin === 'live_search' || displayResources[0].provenance?.origin === 'live_search';
@@ -396,18 +306,12 @@ ${topItem.contentSummary || 'This is an authoritative area of security practice 
       parts.push(`💬 **Tell me:** What's your current technical background, and what area of security interests you most?`);
     } else if (isCareer) {
       parts.push(`💬 **Quick question for you:** How many hours per week do you realistically have available to study, and are you leaning more toward **breaking systems (Offensive / Red Team)** or **defending networks (SOC / Blue Team)**?`);
-    } else if (isDefender) {
-      parts.push(`💬 **Next step:** Would you like to see an example of a KQL threat hunting query used in Defender, or learn how to test Attack Surface Reduction (ASR) rules in a safe lab?`);
-    } else if (isSentinel) {
-      parts.push(`💬 **Next step:** Would you like to explore how KQL queries work in Sentinel to detect suspicious logins, or see how automated SOAR playbooks respond to incidents?`);
-    } else if (isOsi) {
-      parts.push(`💬 **Quick question:** Would you like to see how packet analysis tools like Wireshark inspect these layers, or explore how specific attacks (like ARP spoofing at Layer 2 vs SQL injection at Layer 7) work in practice?`);
-    } else if (isTcp) {
-      parts.push(`💬 **Quick question:** Would you like to see how to capture a TCP 3-way handshake in Wireshark, or explore how UDP differs for DNS and streaming?`);
+    } else if (knowledgeTopic?.followUpQuestion) {
+      parts.push(`💬 **Next step:** ${knowledgeTopic.followUpQuestion}`);
     } else if (isLab || isTool) {
       parts.push(`💬 **Quick check:** Do you already have a Linux environment (such as Ubuntu, Kali, or WSL) set up, or would you prefer browser-based sandbox labs with zero installation to start?`);
     } else {
-      parts.push(`💬 **What do you think?** Does this breakdown make sense, or would you like me to walk you through a practical, real-world scenario on this?`);
+      parts.push(`💬 **What do you think?** Would you like to dive deeper into how blue teams detect and monitor this, or would you like to explore a hands-on exercise or lab environment to test it safely?`);
     }
 
     const fullText = parts.join('\n\n');
