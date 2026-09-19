@@ -1372,6 +1372,223 @@ th {
   display: none !important;
 }
 
+/* Mobile Bottom Navigation Bar */
+.mobile-bottom-nav {
+  display: none;
+}
+
+/* Comprehensive Mobile & Tablet Responsive Media Queries */
+@media (max-width: 768px) {
+  body {
+    padding-bottom: 64px;
+  }
+
+  .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background: rgba(15, 23, 42, 0.94);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border-color);
+    z-index: 900;
+    justify-content: space-around;
+    align-items: center;
+    padding: 0 0.5rem;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+  }
+
+  .mobile-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    padding: 0.35rem 0.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    flex: 1;
+    max-width: 80px;
+    gap: 0.2rem;
+    transition: all 0.2s ease;
+  }
+
+  .mobile-nav-item:active {
+    transform: scale(0.92);
+  }
+
+  .mobile-nav-item.active {
+    color: var(--accent-cyan);
+  }
+
+  .mobile-nav-icon {
+    font-size: 1.25rem;
+    line-height: 1;
+  }
+
+  .mobile-nav-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  .app-header {
+    padding: 0.75rem 1rem;
+  }
+
+  .main-content {
+    padding: 1rem 0.75rem 2rem 0.75rem;
+  }
+
+  /* Prevent iOS zoom on input focus */
+  select, input[type="text"], textarea {
+    font-size: 16px !important;
+    min-height: 44px;
+  }
+
+  .btn {
+    min-height: 44px;
+  }
+
+  .btn-sm {
+    min-height: 38px;
+  }
+
+  /* Roadmap Layout on Mobile */
+  .roadmap-layout {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  .diagnostic-card {
+    padding: 1.25rem;
+  }
+
+  .roadmap-display {
+    padding: 1.15rem;
+  }
+
+  .roadmap-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .roadmap-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.85rem;
+    padding: 1rem;
+  }
+
+  .roadmap-btn-group {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 0.5rem;
+  }
+
+  .roadmap-btn-group .btn {
+    width: 100%;
+  }
+
+  /* Stage Cards on Mobile */
+  .stage-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .stage-header-right {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .stage-body {
+    padding: 1rem;
+  }
+
+  .res-title-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+  }
+
+  /* Chat on Mobile */
+  .chat-layout {
+    height: calc(100dvh - 170px);
+    min-height: 480px;
+  }
+
+  .chat-messages {
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .message {
+    max-width: 95%;
+  }
+
+  .chat-input-bar {
+    padding: 0.75rem;
+  }
+
+  .btn-scroll-bottom {
+    bottom: 95px;
+    right: 15px;
+  }
+
+  /* Catalog on Mobile */
+  .catalog-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .resources-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Admin on Mobile */
+  .admin-stat-cards {
+    grid-template-columns: 1fr;
+  }
+
+  /* Modal on Mobile */
+  .modal-content {
+    width: 95%;
+    padding: 1.25rem;
+    margin: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .tagline {
+    display: none;
+  }
+
+  .brand h1 {
+    font-size: 1.1rem;
+  }
+
+  .shield-icon {
+    font-size: 1.4rem;
+  }
+
+  .active-section-indicator {
+    padding: 0.35rem 0.65rem;
+    font-size: 0.76rem;
+  }
+
+  .active-section-indicator .menu-hint {
+    display: none;
+  }
+}
+
 /* Print Styles */
 @media print {
   .app-header, .hamburger-btn, .nav-drawer, .nav-tabs, .diagnostic-card, .roadmap-toolbar, .chat-input-bar, .modal, .btn-report, .drawer-overlay {

@@ -29,6 +29,7 @@ const elements = {
   navDrawer: document.getElementById('nav-drawer'),
   drawerOverlay: document.getElementById('drawer-overlay'),
   drawerItems: document.querySelectorAll('.drawer-item'),
+  mobileNavItems: document.querySelectorAll('.mobile-nav-item'),
   tabPanes: document.querySelectorAll('.tab-pane'),
 
   // Roadmap & Quiz
@@ -111,6 +112,10 @@ function setupNavigation() {
       item.classList.toggle('active', item.dataset.tab === targetTab);
     });
 
+    elements.mobileNavItems.forEach(item => {
+      item.classList.toggle('active', item.dataset.tab === targetTab);
+    });
+
     elements.tabPanes.forEach(p => {
       p.classList.toggle('active', p.id === targetTab);
     });
@@ -123,6 +128,10 @@ function setupNavigation() {
   }
 
   elements.drawerItems.forEach(item => {
+    item.addEventListener('click', () => switchTab(item.dataset.tab));
+  });
+
+  elements.mobileNavItems.forEach(item => {
     item.addEventListener('click', () => switchTab(item.dataset.tab));
   });
 
