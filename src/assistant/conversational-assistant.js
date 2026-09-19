@@ -99,15 +99,16 @@ export class ConversationalAssistant extends ILLMProvider {
   constructor(options = {}) {
     super('conversational-assistant');
     this.geminiApiKey = options.geminiApiKey || process.env.GEMINI_API_KEY || '';
-    this.providerMode = options.providerMode || (this.geminiApiKey ? 'gemini' : process.env.LLM_PROVIDER || 'local');
+    this.groqApiKey = options.groqApiKey || process.env.GROQ_API_KEY || '';
+    this.providerMode = options.providerMode || (this.geminiApiKey ? 'gemini' : this.groqApiKey ? 'groq' : process.env.LLM_PROVIDER || 'local');
     this.ollamaEndpoint = options.ollamaEndpoint || process.env.OLLAMA_ENDPOINT || 'http://localhost:11434';
-    this.modelName = options.modelName || (this.geminiApiKey ? 'gemini-1.5-flash' : 'runtime-rag-synthesizer');
+    this.modelName = options.modelName || (this.geminiApiKey ? 'gemini-1.5-flash' : this.groqApiKey ? 'llama-3.3-70b-versatile' : 'runtime-rag-synthesizer');
   }
 
   async checkHealth() {
     return {
       available: true,
-      mode: this.geminiApiKey ? 'gemini' : this.providerMode,
+      mode: this.geminiApiKey ? 'gemini' : this.groqApiKey ? 'groq' : this.providerMode,
       model: this.modelName
     };
   }
@@ -147,13 +148,22 @@ export class ConversationalAssistant extends ILLMProvider {
       };
     }
 
-    // 4. Check for Cloud Gemini Free Tier (either configured on server or supplied in request)
-    const activeKey = apiKey || this.geminiApiKey;
-    if (activeKey) {
+    // 4. Free Tier Generative AI on the server (Google Gemini or Groq Llama)
+    const geminiKey = apiKey || this.geminiApiKey;
+    if (geminiKey) {
       try {
-        return await this._geminiSynthesize(query, evidence, userProfile, chatHistory, activeKey);
+        return await this._geminiSynthesize(query, evidence, userProfile, chatHistory, geminiKey);
       } catch (err) {
-        console.warn(`[LLM] Gemini API error, using local expert mentor fallback: ${err.message}`);
+        console.warn(`[LLM] Gemini API error, attempting fallback: ${err.message}`);
+      }
+    }
+
+    const groqKey = this.groqApiKey;
+    if (groqKey) {
+      try {
+        return await this._groqSynthesize(query, evidence, userProfile, chatHistory, groqKey);
+      } catch (err) {
+        console.warn(`[LLM] Groq API error, attempting fallback: ${err.message}`);
       }
     }
 
@@ -333,6 +343,54 @@ ${query}`;
 
     const data = await response.json();
     const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    return {
+      text: rawText,
+      citations,
+      blocked: false
+    };
+  }
+
+  /**
+   * Free Tier Groq Llama-3.3-70B synthesis (OpenAI-compatible REST API).
+   */
+  async _groqSynthesize(query, evidence, userProfile = {}, chatHistory = [], apiKey = '') {
+    const citations = buildCitations(evidence);
+    const safeEvidenceXml = buildSafeEvidenceContext(evidence);
+    const keyToUse = apiKey || this.groqApiKey;
+
+    const messages = [
+      { role: 'system', content: RUNTIME_RAG_SYSTEM_PROMPT },
+      ...(chatHistory || []).slice(-8).map(m => ({
+        role: m.role === 'user' ? 'user' : 'assistant',
+        content: m.text
+      })),
+      {
+        role: 'user',
+        content: `Verified Evidence:\n${safeEvidenceXml}\n\nLearner Profile:\n${JSON.stringify(userProfile)}\n\nUser Question:\n${query}\n\nRemember: Speak warmly as a senior mentor, ground recommendations in verified evidence with [Indexed] or [Live search] links, never invent fake URLs, conclude with "### Concrete Next Action" (15-min task), and ask a helpful follow-up question.`
+      }
+    ];
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${keyToUse}`
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages,
+        temperature: 0.65,
+        max_tokens: 1400
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Groq API returned HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    const rawText = data.choices?.[0]?.message?.content || '';
 
     return {
       text: rawText,

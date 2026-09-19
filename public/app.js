@@ -59,14 +59,7 @@ const elements = {
   chipButtons: document.querySelectorAll('.btn-chip'),
   btnClearChat: document.getElementById('btn-clear-chat'),
   btnScrollBottom: document.getElementById('btn-scroll-bottom'),
-  btnAiSettings: document.getElementById('btn-ai-settings'),
   aiModeIndicator: document.getElementById('ai-mode-indicator'),
-  currentAiModeText: document.getElementById('current-ai-mode-text'),
-  aiSettingsModal: document.getElementById('ai-settings-modal'),
-  btnCloseAiModal: document.getElementById('btn-close-ai-modal'),
-  inputGeminiKey: document.getElementById('input-gemini-key'),
-  btnSaveAiKey: document.getElementById('btn-save-ai-key'),
-  btnClearAiKey: document.getElementById('btn-clear-ai-key'),
 
   // Catalog
   catalogSearch: document.getElementById('catalog-search'),
@@ -96,7 +89,6 @@ const elements = {
 async function init() {
   setupNavigation();
   setupEventListeners();
-  updateAiModeDisplay();
   await loadTaxonomy();
   await loadResources();
   await loadAdminOverview();
@@ -319,71 +311,6 @@ function setupEventListeners() {
       alert('Error submitting report: ' + err.message);
     }
   });
-
-  // AI Mode Settings Modal
-  elements.btnAiSettings?.addEventListener('click', () => {
-    updateAiModeDisplay();
-    elements.aiSettingsModal?.classList.remove('hidden');
-  });
-
-  elements.btnCloseAiModal?.addEventListener('click', () => {
-    elements.aiSettingsModal?.classList.add('hidden');
-  });
-
-  elements.aiSettingsModal?.addEventListener('click', (e) => {
-    if (e.target === elements.aiSettingsModal) {
-      elements.aiSettingsModal.classList.add('hidden');
-    }
-  });
-
-  elements.btnSaveAiKey?.addEventListener('click', () => {
-    const val = (elements.inputGeminiKey?.value || '').trim();
-    if (val) {
-      localStorage.setItem('cyber_gemini_api_key', val);
-      alert('Gemini API key saved! Chat will now use Gemini Flash with live mentor grounding.');
-    } else {
-      localStorage.removeItem('cyber_gemini_api_key');
-      alert('Key cleared. Chat returned to high-caliber Local Mentor mode ($0).');
-    }
-    updateAiModeDisplay();
-    elements.aiSettingsModal?.classList.add('hidden');
-  });
-
-  elements.btnClearAiKey?.addEventListener('click', () => {
-    localStorage.removeItem('cyber_gemini_api_key');
-    updateAiModeDisplay();
-    alert('Switched to high-caliber Local Mentor mode ($0.00 zero cost).');
-    elements.aiSettingsModal?.classList.add('hidden');
-  });
-}
-
-function updateAiModeDisplay() {
-  const key = localStorage.getItem('cyber_gemini_api_key');
-  if (key) {
-    if (elements.aiModeIndicator) {
-      elements.aiModeIndicator.textContent = '✨ Gemini AI (Active)';
-      elements.aiModeIndicator.className = 'ai-mode-pill gemini';
-    }
-    if (elements.currentAiModeText) {
-      elements.currentAiModeText.textContent = '✨ Google Gemini Generative AI (Connected)';
-      elements.currentAiModeText.style.color = 'var(--accent-emerald)';
-    }
-    if (elements.inputGeminiKey) {
-      elements.inputGeminiKey.value = key;
-    }
-  } else {
-    if (elements.aiModeIndicator) {
-      elements.aiModeIndicator.textContent = '⚡ Local Mentor ($0)';
-      elements.aiModeIndicator.className = 'ai-mode-pill';
-    }
-    if (elements.currentAiModeText) {
-      elements.currentAiModeText.textContent = '⚡ Local Expert Mentor (Zero Cost)';
-      elements.currentAiModeText.style.color = 'var(--accent-cyan)';
-    }
-    if (elements.inputGeminiKey) {
-      elements.inputGeminiKey.value = '';
-    }
-  }
 }
 
 function setupChipListeners() {
@@ -783,8 +710,6 @@ async function sendChatQuery(query) {
   state.chatHistory.push({ role: 'user', text: query });
   appendAssistantLoading();
 
-  const apiKey = localStorage.getItem('cyber_gemini_api_key') || '';
-
   try {
     const res = await fetch('/api/chat', {
       method: 'POST',
@@ -792,8 +717,7 @@ async function sendChatQuery(query) {
       body: JSON.stringify({
         query,
         userProfile: state.userProfile,
-        chatHistory: state.chatHistory.slice(-8),
-        apiKey
+        chatHistory: state.chatHistory.slice(-8)
       })
     });
     const data = await res.json();
