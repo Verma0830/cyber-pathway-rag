@@ -23,11 +23,12 @@ const state = {
 const elements = {
   // Navigation & Drawer
   btnHamburger: document.getElementById('btn-hamburger'),
+  btnOpenMenuIndicator: document.getElementById('btn-open-menu-indicator'),
+  activeTabLabel: document.getElementById('active-tab-label'),
   btnCloseDrawer: document.getElementById('btn-close-drawer'),
   navDrawer: document.getElementById('nav-drawer'),
   drawerOverlay: document.getElementById('drawer-overlay'),
   drawerItems: document.querySelectorAll('.drawer-item'),
-  navTabs: document.querySelectorAll('.nav-tab'),
   tabPanes: document.querySelectorAll('.tab-pane'),
 
   // Roadmap & Quiz
@@ -92,12 +93,19 @@ async function init() {
 
 // --- Navigation & Drawer Setup ---
 function setupNavigation() {
+  const TAB_LABELS = {
+    'tab-roadmap': '🧭 Career Roadmap',
+    'tab-chat': '💬 RAG Advisor Chat',
+    'tab-catalog': '📚 Resource Explorer',
+    'tab-admin': '⚙️ Admin Portal'
+  };
+
   function switchTab(targetTab) {
     state.activeTab = targetTab;
 
-    elements.navTabs.forEach(t => {
-      t.classList.toggle('active', t.dataset.tab === targetTab);
-    });
+    if (elements.activeTabLabel && TAB_LABELS[targetTab]) {
+      elements.activeTabLabel.textContent = TAB_LABELS[targetTab];
+    }
 
     elements.drawerItems.forEach(item => {
       item.classList.toggle('active', item.dataset.tab === targetTab);
@@ -114,13 +122,11 @@ function setupNavigation() {
     }
   }
 
-  elements.navTabs.forEach(tab => {
-    tab.addEventListener('click', () => switchTab(tab.dataset.tab));
-  });
-
   elements.drawerItems.forEach(item => {
     item.addEventListener('click', () => switchTab(item.dataset.tab));
   });
+
+  elements.btnOpenMenuIndicator?.addEventListener('click', toggleDrawer);
 
   function openDrawer() {
     elements.navDrawer?.classList.add('open');
