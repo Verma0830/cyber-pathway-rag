@@ -121,9 +121,24 @@ export class CyberKnowledgeEngine {
    */
   static adaptiveSynthesize(coreTopic = '', rawQuery = '', domainId = '') {
     const query = rawQuery || coreTopic || 'this security topic';
-    const rawClean = (coreTopic && coreTopic.length > 2) ? coreTopic : query;
-    const topicTitle = rawClean.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    let rawClean = (coreTopic && coreTopic.length > 2) ? coreTopic : query;
+    rawClean = rawClean.replace(/^(can\s+one|how\s+can\s+one|how\s+to|how\s+does\s+one|what\s+is\s+the|how\s+do\s+we)\s+/i, '').trim();
+    const topicTitle = rawClean.split(' ').slice(0, 4).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
     const qLower = query.toLowerCase();
+
+    // Direct career/monetization safety guard inside adaptive engine
+    if (/\b(earn|earning|earnings|income|salary|salaries|get\s*paid|freelanc\w*|bug\s*bount\w*|side\s*hustle|career|job|jobs|hiring)\b/i.test(qLower)) {
+      return `### Career Progression & Practical Income Pathways in Cybersecurity
+
+In professional cybersecurity, earning potential and career progression are driven by **demonstrable technical capability and verifiable risk reduction**. 
+
+Organizations hire and compensate security talent across key operational specializations:
+• **Security Operations (SOC Analyst & Incident Response):** Triaging alerts, analyzing security telemetry, and containing threats ($65k–$90k entry).
+• **Offensive Security & Application Security (Pentesting & Bug Bounties):** Testing web applications, APIs, and networks for exploitable flaws ($75k–$115k).
+• **Cloud & Infrastructure Security (DevSecOps):** Securing cloud environments (AWS/Azure/GCP) and CI/CD automation pipelines ($110k–$160k+).
+
+The most reliable strategy to secure paid roles is building verifiable proof of work through free, hands-on lab platforms (like PortSwigger Academy and TryHackMe) and anchoring your foundation with the CompTIA Security+ certification.`;
+    }
 
     // Determine technical specialization
     let role = 'Defensive Engineering & Threat Mitigation';

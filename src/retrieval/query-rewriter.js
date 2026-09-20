@@ -112,7 +112,7 @@ export function extractCoreKeywords(query) {
   if (!query || typeof query !== 'string') return '';
   let cleaned = query.trim();
   cleaned = cleaned
-    .replace(/^(can\s+you\s+(please\s+)?(explain|tell\s+me\s+about|teach\s+me|help\s+me\s+with)\s+)?(what\s+is(\s+the)?|how\s+does(\s+the)?|how\s+do\s+i|how\s+to|how\s+can\s+(i|we)|where\s+can\s+i\s+(find|learn|practice)|tell\s+me\s+about|give\s+me\s+an\s+overview\s+of|explain|i\s+(want|need|would\s+like)\s+to\s+(learn|know|understand|read|study)(\s+more)?\s+(about)?)\s+/i, '')
+    .replace(/^(can\s+you\s+(please\s+)?(explain|tell\s+me\s+about|teach\s+me|help\s+me\s+with)\s+)?(what\s+is(\s+the)?|how\s+does(\s+(the|one|someone|a\s+person))?|how\s+do\s+i|how\s+to|how\s+can\s+(i|we|one|someone|you|a\s+person)|where\s+can\s+i\s+(find|learn|practice)|tell\s+me\s+about|give\s+me\s+an\s+overview\s+of|explain|i\s+(want|need|would\s+like)\s+to\s+(learn|know|understand|read|study)(\s+more)?\s+(about)?)\s+/i, '')
     .replace(/(,\s*)?(\s+and\s+how\s+(can|do)\s+(we|i|security\s+teams)\s+(use|prevent|mitigate|stop|detect|defend\s+against)\s+(it|this)(\s+in\s+cyber\s*security)?|\s+and\s+how\s+does\s+it\s+work|\s+and\s+how\s+to\s+use\s+it|\s+in\s+cyber\s*security|\s+in\s+cybersecurity)+/i, '')
     .replace(/(\s+(please|help|thanks|thank\s+you|for\s+beginners|in\s+detail|step\s+by\s+step))+$/i, '')
     .replace(/[?,.!]+$/, '')

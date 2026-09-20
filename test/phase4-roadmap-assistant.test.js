@@ -391,6 +391,22 @@ test('Conversational Assistant Synthesis & Safety', async (t) => {
     assert.ok(response.citations.some(c => c.canonicalUrl.includes('professormesser.com')));
   });
 
+  await t.test('handles "how can one make his earning from cybersecurity" with career tracks and zero robotic boilerplate', async () => {
+    const response = await assistant.synthesizeEvidence({
+      query: 'how can one make his earning from cybersecurity',
+      evidence: []
+    });
+
+    assert.equal(response.blocked, false);
+    assert.ok(response.text.includes('SOC Analyst'));
+    assert.ok(response.text.includes('Bug Bounty'));
+    assert.ok(response.text.includes('PortSwigger'));
+    assert.ok(!response.text.includes('Architecture & Operational Use'));
+    assert.ok(!response.text.includes('evaluates data flows, system calls'));
+    assert.ok(!response.text.includes('Defensive Engineering & Threat Mitigation'));
+    assert.ok(response.citations.length >= 2);
+  });
+
   await t.test('provides authentic practitioner comparison between Python and Bash with trade-offs and recommendations', async () => {
     const response = await assistant.synthesizeEvidence({
       query: 'python vs bash in cybersecurity',

@@ -155,10 +155,10 @@ export class ConversationalAssistant extends ILLMProvider {
     // 3. Conversational / Mentoring Intent & Domain Boundaries
     const queryLower = (query || '').toLowerCase().trim();
     const isGreeting = /^(hi|hello|hey|good\s*(morning|evening|afternoon)|greetings|howdy|yo)\b/i.test(queryLower);
-    const isMonetization = /(earn\s*money|make\s*money|how\s+to\s+earn|how\s+can\s+i\s+earn|how\s+do\s+i\s+earn|income|salaries|salary|get\s*paid|freelanc|bug\s*bount|side\s*hustle|consulting|make\s*a\s*living|monetiz)/i.test(queryLower);
+    const isMonetization = /\b(earn|earning|earnings|income|salary|salaries|get\s*paid|pay\s*in\s*cyber|freelanc\w*|bug\s*bount\w*|side\s*hustle|consulting|monetiz\w*|make.*money|make.*living|make.*earning)\b/i.test(queryLower);
     const isComparison = /((\bvs\b|\bversus\b|difference\s+between|which\s+is\s+better|which\s+should\s+i\s+learn|which\s+one)\s+.*(python|bash|kali|parrot|burp|zap|zaproxy|security\+|ceh|blue\s*team|red\s*team)|(python|bash|kali|parrot|burp|zap|zaproxy|security\+|ceh|blue\s*team|red\s*team)\s+(\bvs\b|\bversus\b))/i.test(queryLower);
     const isMythOrDailyLife = /(is\s+cyber\s*security\s+hard|do\s+i\s+need\s+(a\s+)?degree|does\s+cyber\s*security\s+require\s+(math|coding)|is\s+coding\s+required|what\s+does\s+a\s+soc\s+analyst\s+do\s+daily|day\s+in\s+the\s+life|is\s+cyber\s*security\s+stressful|can\s+i\s+learn\s+cyber\s*security\s+without\s+(math|coding|degree))/i.test(queryLower);
-    const isCareer = isMonetization || /(career|transition|pivot|become\s+a\s+|switch\s+to\s+cyber|start\s+in\s+cyber|how\s+to\s+start|how\s+to\s+break\s+into|job|jobs|hiring|hire|get\s*hired|entry\s*level|internship|interview|resume|cv|roadmap|pathway)/i.test(queryLower);
+    const isCareer = isMonetization || /(career|transition|pivot|become\s+a\s+|switch\s+to\s+cyber|start\s+in\s+cyber|how\s+to\s+start|how\s+to\s+break\s+into|break\s+into|get\s+into\s+cyber|job|jobs|hiring|hire|get\s*hired|entry\s*level|internship|interview|resume|cv|roadmap|pathway|work\s+in\s+cyber)/i.test(queryLower);
     const isHoursOrPace = /(\d+\s*(hours?|hrs?)|weekends?|part\s*time|full\s*time|every\s*day)/i.test(queryLower);
     const isConversationalOrMentoring = isGreeting || isMonetization || isComparison || isMythOrDailyLife || isCareer || isHoursOrPace;
 
@@ -680,10 +680,10 @@ Block out specific days and times in your weekly calendar right now for your stu
 
     // Intent & topic detection
     const isGreeting = /^(hi|hello|hey|good\s*(morning|evening|afternoon)|greetings|howdy|yo)\b/i.test(queryLower);
-    const isMonetization = /(earn\s*money|make\s*money|how\s+to\s+earn|how\s+can\s+i\s+earn|how\s+do\s+i\s+earn|income|salaries|salary|get\s*paid|freelanc|bug\s*bount|side\s*hustle|consulting|make\s*a\s*living|monetiz)/i.test(queryLower);
+    const isMonetization = /\b(earn|earning|earnings|income|salary|salaries|get\s*paid|pay\s*in\s*cyber|freelanc\w*|bug\s*bount\w*|side\s*hustle|consulting|monetiz\w*|make.*money|make.*living|make.*earning)\b/i.test(queryLower);
     const isComparison = /((\bvs\b|\bversus\b|difference\s+between|which\s+is\s+better|which\s+should\s+i\s+learn|which\s+one)\s+.*(python|bash|kali|parrot|burp|zap|zaproxy|security\+|ceh|blue\s*team|red\s*team)|(python|bash|kali|parrot|burp|zap|zaproxy|security\+|ceh|blue\s*team|red\s*team)\s+(\bvs\b|\bversus\b))/i.test(queryLower);
     const isMythOrDailyLife = /(is\s+cyber\s*security\s+hard|do\s+i\s+need\s+(a\s+)?degree|does\s+cyber\s*security\s+require\s+(math|coding)|is\s+coding\s+required|what\s+does\s+a\s+soc\s+analyst\s+do\s+daily|day\s+in\s+the\s+life|is\s+cyber\s*security\s+stressful|can\s+i\s+learn\s+cyber\s*security\s+without\s+(math|coding|degree))/i.test(queryLower);
-    const isCareer = isMonetization || /(career|transition|pivot|become\s+a\s+|switch\s+to\s+cyber|start\s+in\s+cyber|how\s+to\s+start|how\s+to\s+break\s+into|job|jobs|hiring|hire|get\s*hired|entry\s*level|internship|interview|resume|cv|roadmap|pathway)/i.test(queryLower);
+    const isCareer = isMonetization || /(career|transition|pivot|become\s+a\s+|switch\s+to\s+cyber|start\s+in\s+cyber|how\s+to\s+start|how\s+to\s+break\s+into|break\s+into|get\s+into\s+cyber|job|jobs|hiring|hire|get\s*hired|entry\s*level|internship|interview|resume|cv|roadmap|pathway|work\s+in\s+cyber)/i.test(queryLower);
     const isLab = /(lab|practice|hands-on|exercise|wargame|tutorial|where can i practice|ctf|challenge)/i.test(queryLower);
     const isTool = /(tool|software|wireshark|nmap|ghidra|burp|metasploit|snort|zeek|download|install|kali)/i.test(queryLower);
     const isHoursOrPace = /(\d+\s*(hours?|hrs?)|weekends?|part\s*time|full\s*time|every\s*day)/i.test(queryLower);
