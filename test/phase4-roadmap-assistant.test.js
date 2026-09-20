@@ -367,4 +367,66 @@ test('Conversational Assistant Synthesis & Safety', async (t) => {
     assert.ok(!response.text.toLowerCase().includes('can bus'));
     assert.ok(!response.text.toLowerCase().includes('opengarages'));
   });
+
+  await t.test('explains how to earn money in cybersecurity with realistic career tracks, compensation, and verified resources', async () => {
+    const response = await assistant.synthesizeEvidence({
+      query: 'how to earn money in cyber security',
+      evidence: []
+    });
+
+    assert.equal(response.blocked, false);
+    assert.ok(response.text.includes('SOC Analyst'));
+    assert.ok(response.text.includes('Bug Bounty'));
+    assert.ok(response.text.includes('PortSwigger'));
+    assert.ok(response.text.includes('Security+'));
+    assert.ok(response.text.includes('Concrete Next Action'));
+    // Ensure ZERO robotic template leakage
+    assert.ok(!response.text.includes('Architecture & Operational Use'));
+    assert.ok(!response.text.includes('evaluates data flows, system calls'));
+    assert.ok(!response.text.includes('Defensive Engineering & Threat Mitigation'));
+    assert.ok(!response.text.includes('endurance sport'));
+    // Ensure high-yield citations
+    assert.ok(response.citations.length >= 2);
+    assert.ok(response.citations.some(c => c.canonicalUrl.includes('portswigger.net')));
+    assert.ok(response.citations.some(c => c.canonicalUrl.includes('professormesser.com')));
+  });
+
+  await t.test('provides authentic practitioner comparison between Python and Bash with trade-offs and recommendations', async () => {
+    const response = await assistant.synthesizeEvidence({
+      query: 'python vs bash in cybersecurity',
+      evidence: []
+    });
+
+    assert.equal(response.blocked, false);
+    assert.ok(response.text.includes('Python vs. Bash'));
+    assert.ok(response.text.includes('OverTheWire'));
+    assert.ok(response.text.includes('Concrete Next Action'));
+    assert.ok(!response.text.includes('Architecture & Operational Use'));
+  });
+
+  await t.test('debunks beginner myth about math requirements in cybersecurity', async () => {
+    const response = await assistant.synthesizeEvidence({
+      query: 'does cybersecurity require math?',
+      evidence: []
+    });
+
+    assert.equal(response.blocked, false);
+    assert.ok(response.text.includes('Myth Buster'));
+    assert.ok(response.text.includes('zero advanced math'));
+    assert.ok(response.text.includes('Concrete Next Action'));
+    assert.ok(!response.text.includes('Architecture & Operational Use'));
+  });
+
+  await t.test('handles greeting with friendly mentor persona and zero citations', async () => {
+    const response = await assistant.synthesizeEvidence({
+      query: 'hello',
+      evidence: []
+    });
+
+    assert.equal(response.blocked, false);
+    assert.ok(response.text.includes('experienced security practitioner in your corner'));
+    assert.equal(response.citations.length, 0);
+    assert.ok(!response.text.includes('Architecture & Operational Use'));
+    assert.ok(!response.text.includes('endurance sport'));
+  });
 });
