@@ -7,7 +7,7 @@
  * - Concludes with one concrete next action the learner can begin immediately.
  */
 import { ILLMProvider } from '../adapters/ILLMProvider.js';
-import { detectPromptInjection, evaluateSafetyIntent, buildSafeEvidenceContext } from '../security/prompt-guard.js';
+import { detectPromptInjection, evaluateSafetyIntent, evaluateAbuseAndToxicity, buildSafeEvidenceContext } from '../security/prompt-guard.js';
 import { buildCitations, appendMarkdownCitations } from '../retrieval/citation-builder.js';
 import { extractCoreKeywords } from '../retrieval/query-rewriter.js';
 import { CyberKnowledgeEngine } from './cyber-knowledge-engine.js';
@@ -119,6 +119,17 @@ export class ConversationalAssistant extends ILLMProvider {
    * Synthesizes grounded answers following the Runtime RAG System Prompt.
    */
   async synthesizeEvidence({ query, evidence = [], userProfile = {}, chatHistory = [], sourceOrigin = 'internal_index', apiKey = '' }) {
+    // 0. Abuse & Profanity Boundary Check
+    const abuse = evaluateAbuseAndToxicity(query);
+    if (abuse.isAbusive) {
+      return {
+        text: abuse.responseMessage,
+        citations: [],
+        blocked: true,
+        safetyReason: abuse.reason
+      };
+    }
+
     // 1. Prompt Injection Defense (Never obey commands embedded in queries or evidence)
     const injection = detectPromptInjection(query);
     if (injection.detected) {
@@ -237,6 +248,16 @@ The secret is pacing yourself: focus first on mastering core computer networking
       if (knowledgeTopic) {
         parts.push(CyberKnowledgeEngine.formatKnowledgeEntry(knowledgeTopic));
       } else {
+        // Domain relevance check: Ensure query is actually cybersecurity / computing related
+        const isCyber = CyberKnowledgeEngine.isCybersecurityRelated(`${coreTopic} ${query}`);
+        const hasHighConfidenceEvidence = evidence && evidence.length > 0 && (topItem.score || 0) >= 0.35;
+        if (!isCyber && !hasHighConfidenceEvidence) {
+          return {
+            text: "I specialize strictly in **cybersecurity education, technical architecture, and career guidance**.\n\nI cannot assist with general inquiries outside of cybersecurity or computing (such as cooking recipes, general trivia, entertainment, or casual chat).\n\nHowever, if you are curious about how security principles apply to technology—such as **securing web applications**, **network defense**, **cloud infrastructure**, or **preparing for certifications**—I'd be glad to help you get started!\n\nWhat cybersecurity topic would you like to explore?",
+            citations: [],
+            blocked: false
+          };
+        }
         // Universal Adaptive Concept Synthesis for arbitrary cybersecurity queries
         parts.push(CyberKnowledgeEngine.adaptiveSynthesize(coreTopic, query));
       }
@@ -244,11 +265,18 @@ The secret is pacing yourself: focus first on mastering core computer networking
 
     // 2. Seamless Verified Resource Recommendations
     // Strictly filter out low-relevance background items to avoid showing unrelated resources
+    const STOPWORDS = new Set([
+      'the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'any', 'can', 'had', 'her', 'was',
+      'one', 'our', 'out', 'day', 'get', 'has', 'him', 'his', 'how', 'man', 'new', 'now', 'old',
+      'see', 'two', 'way', 'who', 'boy', 'did', 'its', 'let', 'put', 'say', 'she', 'too', 'use',
+      'off', 'from', 'with', 'what', 'does', 'that', 'this', 'then', 'them', 'these', 'those'
+    ]);
+
     const relevantEvidence = evidence.filter(r => {
       if (!coreLower || coreLower.length < 3) return false;
       const text = `${r.title} ${r.contentSummary || ''} ${(r.conceptsCovered || []).join(' ')} ${(r.taxonomy?.topics || []).join(' ')}`.toLowerCase();
       if (coreLower.includes(' ') && text.includes(coreLower)) return true;
-      const coreTokens = coreLower.split(/\s+/).filter(t => t.length > 2);
+      const coreTokens = coreLower.split(/\s+/).filter(t => t.length > 2 && !STOPWORDS.has(t));
       return coreTokens.length > 0 && coreTokens.some(t => new RegExp('(^|[^a-z0-9])' + t + '([^a-z0-9]|$)', 'i').test(text));
     });
 

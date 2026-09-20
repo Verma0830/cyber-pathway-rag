@@ -140,6 +140,31 @@ test('Conversational Assistant Synthesis & Safety', async (t) => {
     assert.ok(response.text.includes('TryHackMe'));
   });
 
+  await t.test('intercepts abusive, profane, and toxic queries with respectful boundary and zero citations', async () => {
+    const response = await assistant.synthesizeEvidence({
+      query: 'Fuck Off',
+      evidence: []
+    });
+
+    assert.equal(response.blocked, true);
+    assert.equal(response.citations.length, 0);
+    assert.ok(response.text.includes('respectful'));
+    assert.ok(!response.text.toLowerCase().includes('architecture'));
+    assert.ok(!response.text.toLowerCase().includes('defensive engineering'));
+  });
+
+  await t.test('redirects off-topic non-cyber queries politely with zero citations', async () => {
+    const response = await assistant.synthesizeEvidence({
+      query: 'how do I bake chocolate cookies?',
+      evidence: []
+    });
+
+    assert.equal(response.blocked, false);
+    assert.equal(response.citations.length, 0);
+    assert.ok(response.text.includes('cybersecurity'));
+    assert.ok(!response.text.includes('Bake Chocolate Cookies in Cybersecurity'));
+  });
+
   await t.test('states honestly when no verified evidence is found', async () => {
     const response = await assistant.synthesizeEvidence({
       query: 'Obscure non-existent topic xyz123',

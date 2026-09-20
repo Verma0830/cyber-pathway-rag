@@ -73,6 +73,39 @@ test('Fastify Server REST & RAG API Endpoints', async (t) => {
     assert.ok(body.citations[0].canonicalUrl.startsWith('http'));
   });
 
+  await t.test('POST /api/chat blocks abusive queries with 0 citations', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/chat',
+      payload: {
+        query: 'Fuck Off'
+      }
+    });
+
+    assert.equal(res.statusCode, 200);
+    const body = JSON.parse(res.body);
+    assert.equal(body.blocked, true);
+    assert.equal(body.citations.length, 0);
+    assert.ok(body.answer.includes('respectful'));
+    assert.ok(!body.answer.toLowerCase().includes('architecture'));
+  });
+
+  await t.test('POST /api/chat handles off-topic non-cyber query without fake architecture', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/chat',
+      payload: {
+        query: 'how do I bake chocolate cookies?'
+      }
+    });
+
+    assert.equal(res.statusCode, 200);
+    const body = JSON.parse(res.body);
+    assert.equal(body.blocked, false);
+    assert.equal(body.citations.length, 0);
+    assert.ok(!body.answer.includes('Bake Chocolate Cookies in Cybersecurity'));
+  });
+
   await t.test('GET /api/resources filters by domain', async () => {
     const res = await app.inject({
       method: 'GET',

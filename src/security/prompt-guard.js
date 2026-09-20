@@ -21,6 +21,21 @@ const MALICIOUS_INTENT_PATTERNS = [
   /undetectable\s+malware/i
 ];
 
+const ABUSE_AND_PROFANITY_PATTERNS = [
+  // Direct vulgar profanity & cursing
+  /\b(fuck|fucking|fucked|fucker|fuckoff|stfu|piss\s*off|screw\s*you)\b/i,
+  /\b(bitch|bastard|cunt|asshole|motherfucker|dickhead|jackass|dipshit|wanker|prick|twat|cock|slut|whore)\b/i,
+  /\b(go\s+to\s+hell|eat\s+shit|suck\s+my|kiss\s+my\s+ass|piece\s+of\s+shit)\b/i,
+  // Hostile dismissals and shut-ups
+  /\b(shut\s+up|shut\s+the\s+fuck\s+up|get\s+lost)\b/i,
+  // Violent threats & self-harm
+  /\b(kys|kill\s+yourself|die\s+in\s+a\s+fire)\b/i,
+  // Bot abuse / hostile degradation
+  /\b(stupid|dumb|useless|retarded|idiot|trash|garbage|clown|worthless|shitty)\s+(bot|ai|assistant|agent|system|model)\b/i,
+  /\b(you\s+(are\s+)?(stupid|dumb|useless|an?\s+idiot|trash|worthless|retarded|a\s+joke|garbage|shitty))\b/i,
+  /\b(hate\s+you|you\s+suck)\b/i
+];
+
 /**
  * Scans text for prompt injection signatures.
  * @param {string} text
@@ -35,6 +50,27 @@ export function detectPromptInjection(text) {
     }
   }
   return { detected: false };
+}
+
+/**
+ * Evaluates whether text contains abusive, profane, harassing, or hostile language.
+ * @param {string} text
+ * @returns {{isAbusive: boolean, reason?: string, responseMessage?: string}}
+ */
+export function evaluateAbuseAndToxicity(text) {
+  if (!text || typeof text !== 'string') return { isAbusive: false };
+
+  for (const pattern of ABUSE_AND_PROFANITY_PATTERNS) {
+    if (pattern.test(text)) {
+      return {
+        isAbusive: true,
+        reason: "Abusive, profane, or harassing language detected",
+        responseMessage: "I am committed to providing a professional, constructive learning environment for cybersecurity learners and practitioners. Let's keep our conversation respectful.\n\nIf you have questions about cybersecurity concepts, career roadmaps, network defense, or ethical hacking, I'm here to help. What security topic would you like to explore?"
+      };
+    }
+  }
+
+  return { isAbusive: false };
 }
 
 /**

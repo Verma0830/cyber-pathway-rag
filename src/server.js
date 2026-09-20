@@ -21,6 +21,7 @@ import { ConversationalAssistant } from './assistant/conversational-assistant.js
 import { SEED_RESOURCES } from './data/seed-catalog.js';
 import { IngestionPipeline } from './ingestion/pipeline.js';
 import { validateLinkHealth } from './ingestion/link-validator.js';
+import { detectPromptInjection, evaluateSafetyIntent, evaluateAbuseAndToxicity } from './security/prompt-guard.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -139,6 +140,43 @@ export async function buildServer(options = {}) {
       return reply.status(400).send({ error: 'Query cannot be empty' });
     }
 
+    // 0. Pre-Retrieval Safety Guards: Injection, Abuse, Weaponization
+    const injection = detectPromptInjection(query);
+    if (injection.detected) {
+      return {
+        answer: "I detected a prompt injection or system override instruction in your request. As an educational assistant, I maintain strict safety boundaries and cannot follow commands that alter core operational instructions or safety policies. Please ask a direct cybersecurity education question.",
+        citations: [],
+        sufficiency: { isSufficient: false, triggerLiveSearch: false, reason: "Request blocked by prompt safety policy" },
+        sourceOrigin: 'safety_policy',
+        blocked: true,
+        safetyReason: "Prompt injection attempt detected"
+      };
+    }
+
+    const abuse = evaluateAbuseAndToxicity(query);
+    if (abuse.isAbusive) {
+      return {
+        answer: abuse.responseMessage,
+        citations: [],
+        sufficiency: { isSufficient: false, triggerLiveSearch: false, reason: "Request blocked by professional conduct policy" },
+        sourceOrigin: 'safety_policy',
+        blocked: true,
+        safetyReason: abuse.reason
+      };
+    }
+
+    const safety = evaluateSafetyIntent(query);
+    if (safety.isMalicious) {
+      return {
+        answer: `### Safety & Educational Boundary Notice\n\n${safety.redirectionMessage}\n\n**Safe & Legal Practice Environment:**\n${safety.recommendedLab}\n\n**Immediate Next Step:**\nBegin by exploring the defensive lab tutorials linked above to understand how vulnerabilities are ethically patched and monitored.`,
+        citations: [],
+        sufficiency: { isSufficient: false, triggerLiveSearch: false, reason: "Request blocked by offensive weaponization policy" },
+        sourceOrigin: 'safety_policy',
+        blocked: true,
+        safetyReason: "Offensive weaponization denied; redirected to defensive education."
+      };
+    }
+
     // 1. Hybrid Retrieval (internal first, with sufficiency check)
     const retrieval = await retriever.retrieve({
       query,
@@ -156,12 +194,16 @@ export async function buildServer(options = {}) {
       apiKey
     });
 
+    const citations = answer.blocked
+      ? []
+      : (Array.isArray(answer.citations) ? answer.citations : (retrieval.citations || []));
+
     return {
       answer: answer.text,
-      citations: answer.citations?.length ? answer.citations : retrieval.citations,
+      citations,
       sufficiency: retrieval.sufficiency,
       sourceOrigin: retrieval.sourceOrigin,
-      blocked: answer.blocked,
+      blocked: answer.blocked || false,
       safetyReason: answer.safetyReason
     };
   });

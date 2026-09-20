@@ -9,7 +9,33 @@
  * 3. Strict domain boundary isolation (zero off-topic cross-contamination).
  */
 
+const CYBER_SECURITY_INDICATORS = [
+  // Core security & defense terms
+  /\b(security|cyber|cybersecurity|infosec|appsec|netsec|devsecops|soc|siem|soar|edr|xdr|ids|ips|iam|pam|dlp|casb|waf|firewall|zero\s*trust|mitre|owasp|cve|cvss|nist|cis|iso\s*27001|hipaa|pci-dss|gdpr)\b/i,
+  // Threats, attacks, malware & exploits
+  /\b(attack|threat|adversary|exploit|vulnerability|payload|malware|ransomware|trojan|worm|virus|rootkit|botnet|phishing|spear\s*phishing|social\s*engineering|spoofing|sniffing|mitm|man\s*in\s*the\s*middle|dos|ddos|brute\s*force|credential\s*stuffing|injection|sqli|xss|csrf|ssrf|idor|buffer\s*overflow|privesc|privilege\s*escalation|lateral\s*movement|persistence|exfiltration|c2|command\s*and\s*control|backdoor|shell|reverse\s*shell|bind\s*shell|zero\s*day|0-day)\b/i,
+  // Operations, forensics, detection
+  /\b(defense|defensive|blue\s*team|red\s*team|purple\s*team|threat\s*hunting|incident\s*response|dfir|forensics|triage|telemetry|honeypot|honeytoken|canary|patch|hardening|sanitization|encryption|decryption|cryptography|pki|certificate|signature|yara|sigma|kql|spl|suricata|snort|zeek)\b/i,
+  // Systems, networking & protocols
+  /\b(linux|unix|windows|active\s*directory|domain\s*controller|kerberos|ldap|dns|dhcp|tcp|udp|ip|icmp|bgp|routing|switch|vlan|subnet|nat|vpn|ipsec|wireguard|proxy|tls|ssl|ssh|http|https|api|rest|graphql|oauth|saml|jwt|mfa|2fa|sso|cloud|aws|azure|gcp|kubernetes|k8s|docker|container|ebpf|kernel|firmware|bios|uefi|scada|ics|plc|can\s*bus|automotive\s*security)\b/i,
+  // Learning, tools & certifications
+  /\b(certification|comptia|security\+|network\+|ceh|oscp|cissp|cism|tryhackme|hackthebox|portswigger|sans|pwn|reverse\s*engineering|disassembly|decompilation|wireshark|nmap|burp|metasploit|ghidra|kali|pcap|packet)\b/i
+];
+
 export class CyberKnowledgeEngine {
+  /**
+   * Evaluates whether a query or topic is genuinely related to cybersecurity, networking, systems, or IT.
+   * @param {string} text
+   * @returns {boolean}
+   */
+  static isCybersecurityRelated(text) {
+    if (!text || typeof text !== 'string') return false;
+    for (const pattern of CYBER_SECURITY_INDICATORS) {
+      if (pattern.test(text)) return true;
+    }
+    return false;
+  }
+
   /**
    * Evaluates query against the comprehensive cybersecurity knowledge taxonomy.
    * @param {string} coreTopic
