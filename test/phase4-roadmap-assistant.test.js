@@ -427,6 +427,22 @@ test('Conversational Assistant Synthesis & Safety', async (t) => {
     assert.ok(response.citations.length >= 2);
   });
 
+  await t.test('handles "What are courses that we can do for the initial starting" with verified courses and zero recipe block', async () => {
+    const response = await assistant.synthesizeEvidence({
+      query: 'What are courses that we can do for the initial starting',
+      evidence: []
+    });
+
+    assert.equal(response.blocked, false);
+    assert.ok(response.text.includes('Welcome to Cybersecurity'));
+    assert.ok(response.text.includes('Computer Networking Fundamentals'));
+    assert.ok(response.text.includes('Professor Messer'));
+    assert.ok(response.text.includes('OverTheWire'));
+    assert.ok(!response.text.includes('cooking recipes'));
+    assert.ok(!response.text.includes('Architecture & Operational Use'));
+    assert.ok(response.citations.length >= 2);
+  });
+
   await t.test('provides authentic practitioner comparison between Python and Bash with trade-offs and recommendations', async () => {
     const response = await assistant.synthesizeEvidence({
       query: 'python vs bash in cybersecurity',

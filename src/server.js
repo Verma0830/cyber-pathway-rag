@@ -72,12 +72,15 @@ export async function buildServer(options = {}) {
   // Health check
   app.get('/api/health', async () => {
     const resCount = (await db.getAllResources()).length;
+    const health = await assistant.checkHealth();
     return {
       status: 'healthy',
       runtime: 'Node.js (Pure JavaScript ESM)',
       cost: '$0.00 (Zero-Charge Architecture)',
       indexedResources: resCount,
-      llmProvider: assistant.providerMode
+      llmProvider: health.mode,
+      model: health.model,
+      lastLlmError: health.lastLlmError
     };
   });
 

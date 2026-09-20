@@ -123,8 +123,9 @@ export class ConversationalAssistant extends ILLMProvider {
   async checkHealth() {
     return {
       available: true,
-      mode: this.geminiApiKey ? 'gemini' : this.groqApiKey ? 'groq' : this.providerMode,
-      model: this.modelName
+      mode: this.groqApiKey ? 'groq' : this.geminiApiKey ? 'gemini' : this.providerMode,
+      model: this.modelName,
+      lastLlmError: this.lastLlmError || null
     };
   }
 
@@ -168,7 +169,7 @@ export class ConversationalAssistant extends ILLMProvider {
     // 3. Conversational / Mentoring Intent & Domain Boundaries
     const queryLower = (query || '').toLowerCase().trim();
     const isGreeting = /^(hi|hello|hey|good\s*(morning|evening|afternoon)|greetings|howdy|yo)\b/i.test(queryLower);
-    const isBeginner = /(newbie|noob|absolute\s+beginner|start\s+from\s+scratch|start\s+from\s+zero|where\s+(do|can|should|in)\s+.*start|where\s+to\s+start|how\s+(do|can|should|in)\s+.*start|how\s+to\s+start|how\s+to\s+begin|how\s+do\s+i\s+begin|what\s+should\s+i\s+do|don'?t\s+know\s+anything|know\s+nothing|zero\s+knowledge|just\s+getting\s+started|i\s+am\s+(a\s+)?(beginner|newbie|starting))/i.test(queryLower);
+    const isBeginner = /(newbie|noob|absolute\s+beginner|start\s+from\s+scratch|start\s+from\s+zero|where\s+(do|can|should|in)\s+.*start|where\s+to\s+start|how\s+(do|can|should|in)\s+.*start|how\s+to\s+start|how\s+to\s+begin|how\s+do\s+i\s+begin|what\s+should\s+i\s+do|don'?t\s+know\s+anything|know\s+nothing|zero\s+knowledge|just\s+getting\s+started|i\s+am\s+(a\s+)?(beginner|newbie|starting)|courses?\s+.*(start|begin|initial|first)|(start|begin|initial|first)\s+.*courses?|what\s+are\s+(the\s+)?courses|best\s+courses|courses?\s+(that\s+)?(we|i)\s+can\s+do|which\s+course|where\s+to\s+learn|how\s+to\s+learn|learning\s+path|initial\s+start)/i.test(queryLower);
     const isMonetization = /\b(earn|earning|earnings|income|salary|salaries|get\s*paid|pay\s*in\s*cyber|freelanc\w*|bug\s*bount\w*|side\s*hustle|consulting|monetiz\w*|make.*money|make.*living|make.*earning)\b/i.test(queryLower);
     const isComparison = /((\bvs\b|\bversus\b|difference\s+between|which\s+is\s+better|which\s+should\s+i\s+learn|which\s+one)\s+.*(python|bash|kali|parrot|burp|zap|zaproxy|security\+|ceh|blue\s*team|red\s*team)|(python|bash|kali|parrot|burp|zap|zaproxy|security\+|ceh|blue\s*team|red\s*team)\s+(\bvs\b|\bversus\b))/i.test(queryLower);
     const isMythOrDailyLife = /(is\s+cyber\s*security\s+hard|do\s+i\s+need\s+(a\s+)?degree|does\s+cyber\s*security\s+require\s+(math|coding)|is\s+coding\s+required|what\s+does\s+a\s+soc\s+analyst\s+do\s+daily|day\s+in\s+the\s+life|is\s+cyber\s*security\s+stressful|can\s+i\s+learn\s+cyber\s*security\s+without\s+(math|coding|degree))/i.test(queryLower);
@@ -218,6 +219,7 @@ export class ConversationalAssistant extends ILLMProvider {
       try {
         return await this._groqSynthesize(query, evidence, userProfile, chatHistory, resolvedGroqKey);
       } catch (err) {
+        this.lastLlmError = { provider: 'groq', message: err.message, time: new Date().toISOString() };
         console.warn(`[LLM] Groq API error, attempting fallback: ${err.message}`);
       }
     }
@@ -227,6 +229,7 @@ export class ConversationalAssistant extends ILLMProvider {
       try {
         return await this._geminiSynthesize(query, evidence, userProfile, chatHistory, resolvedGeminiKey);
       } catch (err) {
+        this.lastLlmError = { provider: 'gemini', message: err.message, time: new Date().toISOString() };
         console.warn(`[LLM] Gemini API error, attempting fallback: ${err.message}`);
       }
     }
@@ -788,7 +791,7 @@ Block out specific days and times in your weekly calendar right now for your stu
 
     // Intent & topic detection
     const isGreeting = /^(hi|hello|hey|good\s*(morning|evening|afternoon)|greetings|howdy|yo)\b/i.test(queryLower);
-    const isBeginner = /(newbie|noob|absolute\s+beginner|start\s+from\s+scratch|start\s+from\s+zero|where\s+(do|can|should|in)\s+.*start|where\s+to\s+start|how\s+(do|can|should|in)\s+.*start|how\s+to\s+start|how\s+to\s+begin|how\s+do\s+i\s+begin|what\s+should\s+i\s+do|don'?t\s+know\s+anything|know\s+nothing|zero\s+knowledge|just\s+getting\s+started|i\s+am\s+(a\s+)?(beginner|newbie|starting))/i.test(queryLower);
+    const isBeginner = /(newbie|noob|absolute\s+beginner|start\s+from\s+scratch|start\s+from\s+zero|where\s+(do|can|should|in)\s+.*start|where\s+to\s+start|how\s+(do|can|should|in)\s+.*start|how\s+to\s+start|how\s+to\s+begin|how\s+do\s+i\s+begin|what\s+should\s+i\s+do|don'?t\s+know\s+anything|know\s+nothing|zero\s+knowledge|just\s+getting\s+started|i\s+am\s+(a\s+)?(beginner|newbie|starting)|courses?\s+.*(start|begin|initial|first)|(start|begin|initial|first)\s+.*courses?|what\s+are\s+(the\s+)?courses|best\s+courses|courses?\s+(that\s+)?(we|i)\s+can\s+do|which\s+course|where\s+to\s+learn|how\s+to\s+learn|learning\s+path|initial\s+start)/i.test(queryLower);
     const isMonetization = /\b(earn|earning|earnings|income|salary|salaries|get\s*paid|pay\s*in\s*cyber|freelanc\w*|bug\s*bount\w*|side\s*hustle|consulting|monetiz\w*|make.*money|make.*living|make.*earning)\b/i.test(queryLower);
     const isComparison = /((\bvs\b|\bversus\b|difference\s+between|which\s+is\s+better|which\s+should\s+i\s+learn|which\s+one)\s+.*(python|bash|kali|parrot|burp|zap|zaproxy|security\+|ceh|blue\s*team|red\s*team)|(python|bash|kali|parrot|burp|zap|zaproxy|security\+|ceh|blue\s*team|red\s*team)\s+(\bvs\b|\bversus\b))/i.test(queryLower);
     const isMythOrDailyLife = /(is\s+cyber\s*security\s+hard|do\s+i\s+need\s+(a\s+)?degree|does\s+cyber\s*security\s+require\s+(math|coding)|is\s+coding\s+required|what\s+does\s+a\s+soc\s+analyst\s+do\s+daily|day\s+in\s+the\s+life|is\s+cyber\s*security\s+stressful|can\s+i\s+learn\s+cyber\s*security\s+without\s+(math|coding|degree))/i.test(queryLower);
@@ -831,10 +834,9 @@ Block out specific days and times in your weekly calendar right now for your stu
     if (knowledgeTopic) {
       parts.push(CyberKnowledgeEngine.formatKnowledgeEntry(knowledgeTopic));
     } else {
-      // Domain relevance check: Ensure query is actually cybersecurity / computing related
-      const isCyber = CyberKnowledgeEngine.isCybersecurityRelated(`${coreTopic} ${query}`);
-      const hasHighConfidenceEvidence = evidence && evidence.length > 0 && (topItem.score || 0) >= 0.35;
-      if (!isCyber && !hasHighConfidenceEvidence) {
+      // Lifestyle / Off-Topic check: Only reject if explicitly about non-computing lifestyle/entertainment
+      const isOffTopicLifestyle = /(bake|baking|cookie|cake|recipe|food|dinner|football|soccer|cricket|nba|baseball|movie|actor|actress|weather|dating|guitar|song|lyrics|travel|vacation|hotel)/i.test(queryLower);
+      if (isOffTopicLifestyle) {
         return {
           text: "I specialize strictly in **cybersecurity education, technical architecture, and career guidance**.\n\nI cannot assist with general inquiries outside of cybersecurity or computing (such as cooking recipes, general trivia, entertainment, or casual chat).\n\nHowever, if you are curious about how security principles apply to technology—such as **securing web applications**, **network defense**, **cloud infrastructure**, or **preparing for certifications**—I'd be glad to help you get started!\n\nWhat cybersecurity topic would you like to explore?",
           citations: [],
@@ -1010,21 +1012,22 @@ ${query}`;
   async _groqSynthesize(query, evidence, userProfile = {}, chatHistory = [], apiKey = '') {
     const citations = buildCitations(evidence);
     const safeEvidenceXml = buildSafeEvidenceContext(evidence);
-    const keyToUse = apiKey || this.groqApiKey;
+    const rawKey = apiKey || this.groqApiKey;
+    const keyToUse = (rawKey || '').trim().replace(/^['"]|['"]$/g, '');
 
     const messages = [
       { role: 'system', content: RUNTIME_RAG_SYSTEM_PROMPT },
       ...(chatHistory || []).slice(-8).map(m => ({
         role: m.role === 'user' ? 'user' : 'assistant',
-        content: m.text
-      })),
+        content: String(m.text || '')
+      })).filter(m => m.content.trim().length > 0),
       {
         role: 'user',
         content: `Verified Evidence:\n${safeEvidenceXml}\n\nLearner Profile:\n${JSON.stringify(userProfile)}\n\nUser Question:\n${query}\n\nRemember: Speak warmly as a senior mentor, ground recommendations in verified evidence with [Indexed] or [Live search] links, never invent fake URLs, conclude with "### Concrete Next Action" (15-min task), and ask a helpful follow-up question.`
       }
     ];
 
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    let response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1037,6 +1040,22 @@ ${query}`;
         max_tokens: 1400
       })
     });
+
+    if (!response.ok && (response.status === 429 || response.status === 404)) {
+      response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${keyToUse}`
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-8b-instant',
+          messages,
+          temperature: 0.65,
+          max_tokens: 1400
+        })
+      });
+    }
 
     if (!response.ok) {
       const errBody = await response.text();
