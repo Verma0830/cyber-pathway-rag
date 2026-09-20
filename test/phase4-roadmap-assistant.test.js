@@ -407,6 +407,26 @@ test('Conversational Assistant Synthesis & Safety', async (t) => {
     assert.ok(response.citations.length >= 2);
   });
 
+  await t.test('handles newbie query with zero background and provides 4-stage blueprint with zero robotic templates', async () => {
+    const response = await assistant.synthesizeEvidence({
+      query: 'i am a newbie, i dont know anything about cybersecurity, what should i do and where do in need to start from.',
+      evidence: []
+    });
+
+    assert.equal(response.blocked, false);
+    assert.ok(response.text.includes('Welcome to Cybersecurity'));
+    assert.ok(response.text.includes('Computer Networking Fundamentals'));
+    assert.ok(response.text.includes('Linux & Command-Line Fluency'));
+    assert.ok(response.text.includes('OverTheWire Wargames: Bandit'));
+    assert.ok(response.text.includes('Professor Messer'));
+    assert.ok(response.text.includes('Concrete Next Action'));
+    // Zero robotic template leakage
+    assert.ok(!response.text.includes('Architecture & Operational Use'));
+    assert.ok(!response.text.includes('evaluates data flows, system calls'));
+    assert.ok(!response.text.includes('I Am A Newbie'));
+    assert.ok(response.citations.length >= 2);
+  });
+
   await t.test('provides authentic practitioner comparison between Python and Bash with trade-offs and recommendations', async () => {
     const response = await assistant.synthesizeEvidence({
       query: 'python vs bash in cybersecurity',

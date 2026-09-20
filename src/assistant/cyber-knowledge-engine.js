@@ -126,6 +126,19 @@ export class CyberKnowledgeEngine {
     const topicTitle = rawClean.split(' ').slice(0, 4).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
     const qLower = query.toLowerCase();
 
+    // Direct career/monetization/beginner safety guard inside adaptive engine
+    if (/(newbie|noob|absolute\s+beginner|start\s+from\s+scratch|start\s+from\s+zero|where\s+(do|can|should|in)\s+.*start|where\s+to\s+start|how\s+(do|can|should|in)\s+.*start|how\s+to\s+start|how\s+to\s+begin|how\s+do\s+i\s+begin|what\s+should\s+i\s+do|don'?t\s+know\s+anything|know\s+nothing|zero\s+knowledge|just\s+getting\s+started|i\s+am\s+(a\s+)?(beginner|newbie|starting))/i.test(qLower) || /^(i\s+am|i'm|my|we|you)\b/i.test(rawClean)) {
+      return `### Getting Started & Building Competence in Cybersecurity
+
+Starting out in cybersecurity requires building hands-on competency step by step rather than memorizing abstract theory. 
+
+Here is the practitioner-proven foundation:
+• **Step 1: Computer Networking Fundamentals:** Learn how packets move across the internet (IP addressing, TCP/UDP, DNS, and the 7-Layer OSI model). Start with **[Professor Messer's CompTIA Network+ Training Course](https://www.professormesser.com/network-plus/n10-008/n10-008-training-course/)**.
+• **Step 2: Linux Command Line:** Over 80% of security systems run on Linux. Practice terminal navigation, file permissions, and shell utilities on **[OverTheWire Wargames: Bandit](https://overthewire.org/wargames/bandit/)**.
+• **Step 3: Foundational Security Principles:** Master the CompTIA Security+ syllabus (threat models, authentication, cryptography, defensive controls) with **[Professor Messer's CompTIA Security+ Training Course](https://www.professormesser.com/security-plus/sy0-701/sy0-701-video/sy0-701-training-course/)**.
+• **Step 4: Interactive Problem Solving:** Practice hands-on web application security on **[PortSwigger Web Security Academy](https://portswigger.net/web-security)**.`;
+    }
+
     // Direct career/monetization safety guard inside adaptive engine
     if (/\b(earn|earning|earnings|income|salary|salaries|get\s*paid|freelanc\w*|bug\s*bount\w*|side\s*hustle|career|job|jobs|hiring)\b/i.test(qLower)) {
       return `### Career Progression & Practical Income Pathways in Cybersecurity

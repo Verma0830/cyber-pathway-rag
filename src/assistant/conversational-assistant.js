@@ -100,11 +100,24 @@ export class ConversationalAssistant extends ILLMProvider {
    */
   constructor(options = {}) {
     super('conversational-assistant');
-    this.geminiApiKey = options.geminiApiKey || process.env.GEMINI_API_KEY || '';
-    this.groqApiKey = options.groqApiKey || process.env.GROQ_API_KEY || '';
-    this.providerMode = options.providerMode || (this.geminiApiKey ? 'gemini' : this.groqApiKey ? 'groq' : process.env.LLM_PROVIDER || 'local');
+    let geminiKey = options.geminiApiKey || process.env.GEMINI_API_KEY || '';
+    let groqKey = options.groqApiKey || process.env.GROQ_API_KEY || '';
+
+    // Auto-swap if keys are in opposite variables
+    if (geminiKey && geminiKey.startsWith('gsk_')) {
+      if (!groqKey) groqKey = geminiKey;
+      geminiKey = '';
+    }
+    if (groqKey && groqKey.startsWith('AIzaSy')) {
+      if (!geminiKey) geminiKey = groqKey;
+      groqKey = '';
+    }
+
+    this.geminiApiKey = geminiKey;
+    this.groqApiKey = groqKey;
+    this.providerMode = options.providerMode || (this.groqApiKey ? 'groq' : this.geminiApiKey ? 'gemini' : process.env.LLM_PROVIDER || 'local');
     this.ollamaEndpoint = options.ollamaEndpoint || process.env.OLLAMA_ENDPOINT || 'http://localhost:11434';
-    this.modelName = options.modelName || (this.geminiApiKey ? 'gemini-1.5-flash' : this.groqApiKey ? 'llama-3.3-70b-versatile' : 'runtime-rag-synthesizer');
+    this.modelName = options.modelName || (this.groqApiKey ? 'llama-3.3-70b-versatile' : this.geminiApiKey ? 'gemini-1.5-flash' : 'runtime-rag-synthesizer');
   }
 
   async checkHealth() {
@@ -155,12 +168,13 @@ export class ConversationalAssistant extends ILLMProvider {
     // 3. Conversational / Mentoring Intent & Domain Boundaries
     const queryLower = (query || '').toLowerCase().trim();
     const isGreeting = /^(hi|hello|hey|good\s*(morning|evening|afternoon)|greetings|howdy|yo)\b/i.test(queryLower);
+    const isBeginner = /(newbie|noob|absolute\s+beginner|start\s+from\s+scratch|start\s+from\s+zero|where\s+(do|can|should|in)\s+.*start|where\s+to\s+start|how\s+(do|can|should|in)\s+.*start|how\s+to\s+start|how\s+to\s+begin|how\s+do\s+i\s+begin|what\s+should\s+i\s+do|don'?t\s+know\s+anything|know\s+nothing|zero\s+knowledge|just\s+getting\s+started|i\s+am\s+(a\s+)?(beginner|newbie|starting))/i.test(queryLower);
     const isMonetization = /\b(earn|earning|earnings|income|salary|salaries|get\s*paid|pay\s*in\s*cyber|freelanc\w*|bug\s*bount\w*|side\s*hustle|consulting|monetiz\w*|make.*money|make.*living|make.*earning)\b/i.test(queryLower);
     const isComparison = /((\bvs\b|\bversus\b|difference\s+between|which\s+is\s+better|which\s+should\s+i\s+learn|which\s+one)\s+.*(python|bash|kali|parrot|burp|zap|zaproxy|security\+|ceh|blue\s*team|red\s*team)|(python|bash|kali|parrot|burp|zap|zaproxy|security\+|ceh|blue\s*team|red\s*team)\s+(\bvs\b|\bversus\b))/i.test(queryLower);
     const isMythOrDailyLife = /(is\s+cyber\s*security\s+hard|do\s+i\s+need\s+(a\s+)?degree|does\s+cyber\s*security\s+require\s+(math|coding)|is\s+coding\s+required|what\s+does\s+a\s+soc\s+analyst\s+do\s+daily|day\s+in\s+the\s+life|is\s+cyber\s*security\s+stressful|can\s+i\s+learn\s+cyber\s*security\s+without\s+(math|coding|degree))/i.test(queryLower);
-    const isCareer = isMonetization || /(career|transition|pivot|become\s+a\s+|switch\s+to\s+cyber|start\s+in\s+cyber|how\s+to\s+start|how\s+to\s+break\s+into|break\s+into|get\s+into\s+cyber|job|jobs|hiring|hire|get\s*hired|entry\s*level|internship|interview|resume|cv|roadmap|pathway|work\s+in\s+cyber)/i.test(queryLower);
+    const isCareer = isMonetization || isBeginner || /(career|transition|pivot|become\s+a\s+|switch\s+to\s+cyber|start\s+in\s+cyber|how\s+to\s+start|how\s+to\s+break\s+into|break\s+into|get\s+into\s+cyber|job|jobs|hiring|hire|get\s*hired|entry\s*level|internship|interview|resume|cv|roadmap|pathway|work\s+in\s+cyber)/i.test(queryLower);
     const isHoursOrPace = /(\d+\s*(hours?|hrs?)|weekends?|part\s*time|full\s*time|every\s*day)/i.test(queryLower);
-    const isConversationalOrMentoring = isGreeting || isMonetization || isComparison || isMythOrDailyLife || isCareer || isHoursOrPace;
+    const isConversationalOrMentoring = isGreeting || isBeginner || isMonetization || isComparison || isMythOrDailyLife || isCareer || isHoursOrPace;
 
     // 4. Honesty Check / Knowledge Engine Fallback / Off-Topic Domain Check
     const coreTopic = extractCoreKeywords(query);
@@ -185,22 +199,35 @@ export class ConversationalAssistant extends ILLMProvider {
       }
     }
 
-    // 5. Free Tier Generative AI on the server (Google Gemini or Groq Llama)
-    const geminiKey = apiKey || this.geminiApiKey;
-    if (geminiKey) {
+    // 5. Intelligent Free Tier Generative AI Dispatch (Groq Llama-3.3-70B or Google Gemini)
+    let resolvedGeminiKey = (apiKey && !apiKey.startsWith('gsk_')) ? apiKey : this.geminiApiKey;
+    let resolvedGroqKey = (apiKey && apiKey.startsWith('gsk_')) ? apiKey : this.groqApiKey;
+
+    // Auto-detect and swap if keys were accidentally placed in opposite variables
+    if (resolvedGeminiKey && resolvedGeminiKey.startsWith('gsk_')) {
+      if (!resolvedGroqKey) resolvedGroqKey = resolvedGeminiKey;
+      resolvedGeminiKey = '';
+    }
+    if (resolvedGroqKey && resolvedGroqKey.startsWith('AIzaSy')) {
+      if (!resolvedGeminiKey) resolvedGeminiKey = resolvedGroqKey;
+      resolvedGroqKey = '';
+    }
+
+    // Priority 1: Groq Llama-3.3-70B (Fastest response time and fluent conversational mentor)
+    if (resolvedGroqKey) {
       try {
-        return await this._geminiSynthesize(query, evidence, userProfile, chatHistory, geminiKey);
+        return await this._groqSynthesize(query, evidence, userProfile, chatHistory, resolvedGroqKey);
       } catch (err) {
-        console.warn(`[LLM] Gemini API error, attempting fallback: ${err.message}`);
+        console.warn(`[LLM] Groq API error, attempting fallback: ${err.message}`);
       }
     }
 
-    const groqKey = this.groqApiKey;
-    if (groqKey) {
+    // Priority 2: Google Gemini 1.5 Flash
+    if (resolvedGeminiKey) {
       try {
-        return await this._groqSynthesize(query, evidence, userProfile, chatHistory, groqKey);
+        return await this._geminiSynthesize(query, evidence, userProfile, chatHistory, resolvedGeminiKey);
       } catch (err) {
-        console.warn(`[LLM] Groq API error, attempting fallback: ${err.message}`);
+        console.warn(`[LLM] Gemini API error, attempting fallback: ${err.message}`);
       }
     }
 
@@ -221,6 +248,87 @@ Tell me a bit about what brought you here today: what's your current background,
       citations: [],
       blocked: false
     };
+  }
+
+  /**
+   * Empathetic, structured roadmap for absolute beginners and career starters.
+   */
+  _synthesizeBeginner(queryLower) {
+    const text = `### Welcome to Cybersecurity! Here is Exactly Where to Start
+
+Starting out in cybersecurity can feel overwhelming because the field is massive and filled with intimidating jargon. The great news is: **you do not need a computer science degree, advanced math, or prior coding experience to begin.**
+
+Here is the realistic, step-by-step foundation recommended by senior practitioners to take you from absolute zero to hands-on capable:
+
+---
+
+### The 4-Stage Zero-Cost Beginner Blueprint
+
+#### 1. Computer Networking Fundamentals (Weeks 1–4)
+Cybersecurity is fundamentally about defending data that moves across networks. Before you can break or defend anything, you must understand how computers communicate:
+• **What to learn:** IP addressing (IPv4/IPv6), Subnetting, TCP vs. UDP, DNS (how domain names resolve), and the 7-Layer OSI Model.
+• **Free Resource:** **[Professor Messer's CompTIA Network+ Training Course](https://www.professormesser.com/network-plus/n10-008/n10-008-training-course/)** \`[Indexed]\`.
+
+#### 2. Linux & Command-Line Fluency (Weeks 3–6)
+Over 80% of security tools, servers, and cloud environments run on Linux. You need to be comfortable working in a terminal without a graphical user interface:
+• **What to learn:** Navigating directories (\`cd\`, \`ls\`), file permissions (\`chmod\`, \`chown\`), process management, and searching text (\`grep\`, \`cat\`, \`find\`).
+• **Free Resource:** **[OverTheWire Wargames: Bandit](https://overthewire.org/wargames/bandit/)** \`[Indexed]\` (A free, gamified SSH wargame that teaches Linux from level 0).
+
+#### 3. Core Security Principles & CompTIA Security+ (Weeks 6–12)
+Learn the universal security vocabulary and operational concepts that every security team uses:
+• **What to learn:** The CIA Triad (Confidentiality, Integrity, Availability), authentication mechanisms (MFA, SSO), threat actors, malware types, and basic cryptography.
+• **Free Resource:** **[Professor Messer's CompTIA Security+ Training Course](https://www.professormesser.com/security-plus/sy0-701/sy0-701-video/sy0-701-training-course/)** \`[Indexed]\`.
+
+#### 4. Hands-On Defensive & Web Security Labs (Weeks 10+)
+Once you understand networks and Linux, start practicing hands-on problem solving:
+• **Where to practice:** Free rooms on **TryHackMe** (Pre-Security and Complete Beginner paths) and **[PortSwigger Web Security Academy](https://portswigger.net/web-security)** \`[Indexed]\`.
+
+---
+
+### Recommended Free Verified Resources
+• **[Professor Messer's CompTIA Network+ Training Course](https://www.professormesser.com/network-plus/n10-008/n10-008-training-course/)** \`[Indexed]\`
+  *(Professor Messer • Video Course • Beginner)*
+  👉 **Why this is valuable:** The best free video course in the world for understanding how packets, routers, switches, and IP addresses work.
+• **[OverTheWire Wargames: Bandit](https://overthewire.org/wargames/bandit/)** \`[Indexed]\`
+  *(OverTheWire • Interactive Lab • Beginner)*
+  👉 **Why this is valuable:** A 100% free, interactive browser/SSH game that teaches you Linux command-line security step by step through solving puzzle levels.
+• **[Professor Messer's CompTIA Security+ Training Course](https://www.professormesser.com/security-plus/sy0-701/sy0-701-video/sy0-701-training-course/)** \`[Indexed]\`
+  *(Professor Messer • Video Course • Beginner)*
+  👉 **Why this is valuable:** Complete free training for the #1 entry-level cybersecurity certification requested by employers worldwide.
+
+---
+
+### Concrete Next Action
+**Do this 15-minute task right now:**
+Open **[OverTheWire Wargames: Bandit](https://overthewire.org/wargames/bandit/)** in your browser. Read the instructions for Level 0, open your computer's terminal (or PowerShell on Windows), and connect via SSH to log in for the very first time.
+
+💬 **Tell me a little about yourself:** What is your current background (e.g., student, retail, IT support, programming, non-technical), and what sparked your curiosity about cybersecurity?`;
+
+    const citations = [
+      {
+        id: 'seed-fund-net-001',
+        title: 'Professor Messer CompTIA Network+ (OSI Model & TCP/IP)',
+        canonicalUrl: 'https://www.professormesser.com/network-plus/n10-008/n10-008-training-course/',
+        provenance: 'internal_index',
+        domainId: 'fundamentals'
+      },
+      {
+        id: 'seed-fund-002',
+        title: 'OverTheWire Wargames: Bandit',
+        canonicalUrl: 'https://overthewire.org/wargames/bandit/',
+        provenance: 'internal_index',
+        domainId: 'fundamentals'
+      },
+      {
+        id: 'seed-fund-004',
+        title: "Professor Messer's CompTIA Security+ Training Course",
+        canonicalUrl: 'https://www.professormesser.com/security-plus/sy0-701/sy0-701-video/sy0-701-training-course/',
+        provenance: 'internal_index',
+        domainId: 'fundamentals'
+      }
+    ];
+
+    return { text, citations, blocked: false };
   }
 
   /**
@@ -680,10 +788,11 @@ Block out specific days and times in your weekly calendar right now for your stu
 
     // Intent & topic detection
     const isGreeting = /^(hi|hello|hey|good\s*(morning|evening|afternoon)|greetings|howdy|yo)\b/i.test(queryLower);
+    const isBeginner = /(newbie|noob|absolute\s+beginner|start\s+from\s+scratch|start\s+from\s+zero|where\s+(do|can|should|in)\s+.*start|where\s+to\s+start|how\s+(do|can|should|in)\s+.*start|how\s+to\s+start|how\s+to\s+begin|how\s+do\s+i\s+begin|what\s+should\s+i\s+do|don'?t\s+know\s+anything|know\s+nothing|zero\s+knowledge|just\s+getting\s+started|i\s+am\s+(a\s+)?(beginner|newbie|starting))/i.test(queryLower);
     const isMonetization = /\b(earn|earning|earnings|income|salary|salaries|get\s*paid|pay\s*in\s*cyber|freelanc\w*|bug\s*bount\w*|side\s*hustle|consulting|monetiz\w*|make.*money|make.*living|make.*earning)\b/i.test(queryLower);
     const isComparison = /((\bvs\b|\bversus\b|difference\s+between|which\s+is\s+better|which\s+should\s+i\s+learn|which\s+one)\s+.*(python|bash|kali|parrot|burp|zap|zaproxy|security\+|ceh|blue\s*team|red\s*team)|(python|bash|kali|parrot|burp|zap|zaproxy|security\+|ceh|blue\s*team|red\s*team)\s+(\bvs\b|\bversus\b))/i.test(queryLower);
     const isMythOrDailyLife = /(is\s+cyber\s*security\s+hard|do\s+i\s+need\s+(a\s+)?degree|does\s+cyber\s*security\s+require\s+(math|coding)|is\s+coding\s+required|what\s+does\s+a\s+soc\s+analyst\s+do\s+daily|day\s+in\s+the\s+life|is\s+cyber\s*security\s+stressful|can\s+i\s+learn\s+cyber\s*security\s+without\s+(math|coding|degree))/i.test(queryLower);
-    const isCareer = isMonetization || /(career|transition|pivot|become\s+a\s+|switch\s+to\s+cyber|start\s+in\s+cyber|how\s+to\s+start|how\s+to\s+break\s+into|break\s+into|get\s+into\s+cyber|job|jobs|hiring|hire|get\s*hired|entry\s*level|internship|interview|resume|cv|roadmap|pathway|work\s+in\s+cyber)/i.test(queryLower);
+    const isCareer = isMonetization || isBeginner || /(career|transition|pivot|become\s+a\s+|switch\s+to\s+cyber|start\s+in\s+cyber|how\s+to\s+start|how\s+to\s+break\s+into|break\s+into|get\s+into\s+cyber|job|jobs|hiring|hire|get\s*hired|entry\s*level|internship|interview|resume|cv|roadmap|pathway|work\s+in\s+cyber)/i.test(queryLower);
     const isLab = /(lab|practice|hands-on|exercise|wargame|tutorial|where can i practice|ctf|challenge)/i.test(queryLower);
     const isTool = /(tool|software|wireshark|nmap|ghidra|burp|metasploit|snort|zeek|download|install|kali)/i.test(queryLower);
     const isHoursOrPace = /(\d+\s*(hours?|hrs?)|weekends?|part\s*time|full\s*time|every\s*day)/i.test(queryLower);
@@ -696,6 +805,9 @@ Block out specific days and times in your weekly calendar right now for your stu
     // Direct routing to specialized human mentor responses
     if (isGreeting) {
       return this._synthesizeGreeting();
+    }
+    if (isBeginner) {
+      return this._synthesizeBeginner(queryLower);
     }
     if (isMonetization) {
       return this._synthesizeMonetization(queryLower);
@@ -878,7 +990,8 @@ ${query}`;
     });
 
     if (!response.ok) {
-      throw new Error(`Gemini API returned HTTP ${response.status}`);
+      const errBody = await response.text();
+      throw new Error(`Gemini API returned HTTP ${response.status}: ${errBody}`);
     }
 
     const data = await response.json();
@@ -926,7 +1039,8 @@ ${query}`;
     });
 
     if (!response.ok) {
-      throw new Error(`Groq API returned HTTP ${response.status}`);
+      const errBody = await response.text();
+      throw new Error(`Groq API returned HTTP ${response.status}: ${errBody}`);
     }
 
     const data = await response.json();
